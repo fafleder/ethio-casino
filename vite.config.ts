@@ -1,14 +1,15 @@
 import { defineConfig } from 'vite';
+import path from 'path';
 
 export default defineConfig({
-  root: 'miniapp',
+  root: path.resolve(__dirname, 'miniapp'),
   publicDir: 'public',
   build: {
-    outDir: '../dist/miniapp',
+    outDir: path.resolve(__dirname, 'dist/miniapp'),
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: 'index.html',
+        main: path.resolve(__dirname, 'miniapp/index.html'),
       },
     },
   },
