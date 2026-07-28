@@ -194,7 +194,7 @@ function createMemoryStore() {
           // Clean up
           val = val.replace(/^['"]|['"]$/g, '').trim();
           // Try to parse numbers
-          if (!isNaN(Number(val)) && val !== '') val = Number(val);
+          if (!isNaN(Number(val)) && val !== '') val = String(Number(val));
           row[col] = val;
         });
         
@@ -221,7 +221,7 @@ function createMemoryStore() {
                   let parsedVal = val.replace(/\$(\d+)/g, (_, n) => String(params[parseInt(n) - 1]));
                   parsedVal = parsedVal.replace(/\?/g, () => String(params.shift()));
                   parsedVal = parsedVal.replace(/^['"]|['"]$/g, '').trim();
-                  if (!isNaN(Number(parsedVal)) && parsedVal !== '') parsedVal = Number(parsedVal);
+                  if (!isNaN(Number(parsedVal)) && parsedVal !== '') parsedVal = String(Number(parsedVal));
                   // Handle COALESCE
                   if (parsedVal.toString().toLowerCase().startsWith('coalesce(')) {
                     if (row[col] !== undefined && row[col] !== null && row[col] !== '') {
@@ -268,7 +268,7 @@ function createMemoryStore() {
                     const addVal = parts[1] ? (isNaN(Number(parts[1])) ? params[0] : Number(parts[1])) : 0;
                     table[id][col] = currentVal + addVal;
                   } else {
-                    if (!isNaN(Number(parsedVal)) && parsedVal !== '') parsedVal = Number(parsedVal);
+                    if (!isNaN(Number(parsedVal)) && parsedVal !== '') parsedVal = String(Number(parsedVal));
                     table[id][col] = parsedVal;
                   }
                 });

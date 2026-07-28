@@ -173,7 +173,7 @@ bot.hears('⚙️ Settings', async (ctx) => {
 
 bot.hears('📈 Admin Stats', async (ctx) => {
   if (!isAdmin(ctx)) return;
-  const { query } = await import('../database');
+  const { query } = await import('../database/index.js');
   const res = await query(`SELECT * FROM daily_stats ORDER BY date DESC LIMIT 7`);
   let msg = '📈 <b>Last 7 Days Stats</b>\n\n';
   res.rows.forEach((day: any) => {
