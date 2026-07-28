@@ -6,11 +6,6 @@ export default defineConfig({
   build: {
     outDir: '../dist/miniapp',
     emptyOutDir: true,
-    rollupOptions: {
-      input: {
-        main: 'miniapp/index.html',
-      },
-    },
   },
   server: {
     port: 3000,
