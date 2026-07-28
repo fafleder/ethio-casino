@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ethio-casino-db
+    environment:
+      POSTGRES_DB: ethio_casino
+      POSTGRES_USER: casino
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-casino123}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U casino -d ethio_casino"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis for sessions (optional)
+  redis:
+    image: redis:7-alpine
+    container_name: ethio-casino-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Casino App
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ethio-casino-app
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - DATABASE_URL=postgresql://casino:${DB_PASSWORD:-casino123}@postgres:5432/ethio_casino?sslmode=disable
+      - BOT_TOKEN=${BOT_TOKEN}
+      - BOT_USERNAME=${BOT_USERNAME}
+      - WEBAPP_URL=http://localhost:3000
+      - OWNER_TELEGRAM_IDS=361695664
+      - LOG_LEVEL=debug
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./src:/app/src:ro
+      - ./miniapp:/app/miniapp:ro
+    command: >
+      sh -c "npx tsx src/database/init.ts && npx tsx src/bot/index.ts"
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,35 @@
+{
+  "name": "ethio-auto-mini-app",
+  "version": "1.0.0",
+  "description": "Telegram Mini App Casino for Ethio Auto Bole",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "bot": "tsx watch src/bot/index.ts",
+    "server": "tsx watch src/server/index.ts",
+    "db:init": "tsx src/database/init.ts",
+    "start": "concurrently \"npm run dev\" \"npm run bot\"",
+    "start:prod": "node dist/server/index.js",
+    "db:push": "tsx src/database/init.ts"
+  },
+  "dependencies": {
+    "@telegram-apps/sdk": "^2.0.0",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.6.1",
+    "express": "^5.2.1",
+    "pg": "^8.11.5",
+    "telegraf": "^4.16.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^20.14.0",
+    "@types/pg": "^8.11.6",
+    "concurrently": "^8.2.2",
+    "tsx": "^4.11.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11"
+  }
+}

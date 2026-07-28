@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <title>Crash Game - Ethio Casino</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0a0a14;
+      color: #e8e8f0;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    
+    @keyframes slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slide-down { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes crash-flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    @keyframes multiplier-rise { from { transform: translateY(100px) scale(0.8); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+    @keyframes line-draw { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
+    @keyframes particle-float { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-200px) scale(0); opacity: 0; } }
+    @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.3); } 50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.6); } }
+    @keyframes btn-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+    
+    .animate-slide-up { animation: slide-up 0.4s ease-out forwards; }
+    .animate-slide-down { animation: slide-down 0.4s ease-out forwards; }
+    .animate-multiplier-rise { animation: multiplier-rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .animate-crash-flash { animation: crash-flash 0.5s ease 3; }
+    .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+    .animate-btn-pulse { animation: btn-pulse 1.5s ease-in-out infinite; }
+    
+    .glass { background: rgba(18, 18, 30, 0.9); backdrop-filter: blur(20px); border: 1px solid rgba(255, 215, 0, 0.1); }
+    .glass-strong { background: rgba(18, 18, 30, 0.98); backdrop-filter: blur(30px); border: 1px solid rgba(255, 215, 0, 0.2); }
+    
+    .gradient-gold { background: linear-gradient(135deg, #ffd700 0%, #ffaa00 50%, #ff8800 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .gradient-green { background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .gradient-red { background: linear-gradient(135deg, #ff4444 0%, #ff6666 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    
+    .btn-primary { background: linear-gradient(135deg, #ffd700, #e6c200); color: #0a0a14; border: none; }
+    .btn-primary:hover { box-shadow: 0 0 24px rgba(255, 215, 0, 0.5); }
+    .btn-primary:active { transform: scale(0.98); }
+    .btn-danger { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; }
+    .btn-danger:hover { box-shadow: 0 0 24px rgba(239, 68, 68, 0.5); }
+    .btn-danger:active { transform: scale(0.98); }
+    .btn-secondary { background: rgba(255, 215, 0, 0.1); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.3); }
+    .btn-secondary:hover { background: rgba(255, 215, 0, 0.2); border-color: #ffd700; }
+    
+    .stat-chip { background: rgba(255, 215, 0, 0.08); border: 1px solid rgba(255, 215, 0, 0.15); padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 600; }
+    
+    .crash-line { stroke-dasharray: 1000; stroke-dashoffset: 1000; }
+    .crash-line.drawing { animation: line-draw 8s linear forwards; }
+    .crash-line.crashed { stroke: #ef4444; filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6)); }
+    
+    ::-webkit-scrollbar { display: none; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+    :focus-visible { outline: 2px solid #ffd700; outline-offset: 2px; }
+    
+    .stagger-1 { animation-delay: 0.05s; }
+    .stagger-2 { animation-delay: 0.1s; }
+    .stagger-3 { animation-delay: 0.15s; }
+    .stagger-4 { animation-delay: 0.2s; }
+    .stagger-5 { animation-delay: 0.25s; }
+    
+    /* Particle container */
+    #particles { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+    .particle { position: absolute; width: 6px; height: 6px; border-radius: 50%; background: #ffd700; opacity: 0; }
+    
+    /* History item */
+    .history-item { transition: all 0.2s ease; }
+    .history-item.win { border-left: 3px solid #00ff88; }
+    .history-item.loss { border-left: 3px solid #ef4444; }
+    .history-item.big-win { border-left: 3px solid #ffd700; background: rgba(255, 215, 0, 0.05); }
+  </style>
+</head>
+<body>
+  <!-- Particles Canvas -->
+  <div id="particles" aria-hidden="true"></div>
+
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-40 glass-strong border-b border-yellow-500/10" role="banner">
+    <div class="max-w-md mx-auto px-3">
+      <div class="flex items-center justify-between h-12">
+        <button class="btn-secondary px-3 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-semibold" id="back-btn" aria-label="Back to lobby">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+          <span>Crash</span>
+        </button>
+        <h1 class="text-sm font-bold gradient-gold text-center flex-1">📈 Crash</h1>
+        <div class="glass px-3 py-1.5 rounded-full flex items-center gap-1.5 min-w-[110px] justify-center">
+          <span class="text-[0.55rem] font-semibold text-yellow-400/60 uppercase tracking-wider">Bal</span>
+          <span id="header-balance" class="font-mono text-sm font-bold text-yellow-400">100.00</span>
+          <span class="text-[0.55rem] font-semibold text-yellow-400/60">ETB</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Multiplier Display (Center) -->
+  <main class="flex-1 flex flex-col items-center justify-center px-4 pt-16 pb-8 relative z-10">
+    <!-- Big Multiplier -->
+    <div class="text-center mb-6 animate-multiplier-rise" id="multiplier-display">
+      <div class="relative inline-block">
+        <span id="multiplier-value" class="font-mono text-7xl md:text-9xl font-extrabold gradient-gold tracking-tight">1.00<span class="text-3xl font-medium text-yellow-400/60">×</span></span>
+        <div class="absolute inset-0 bg-gradient-to-r from-yellow-500/20 via-transparent to-yellow-500/20 rounded-full blur-2xl animate-pulse-glow -z-10"></div>
+      </div>
+      <p class="text-xs text-yellow-400/60 mt-1 font-medium">Current Multiplier</p>
+    </div>
+
+    <!-- Crash Chart Area -->
+    <div class="w-full max-w-md mb-6 animate-slide-up stagger-1" id="chart-container">
+      <svg class="w-full h-64" viewBox="0 0 360 200" preserveAspectRatio="none" role="img" aria-label="Crash multiplier chart">
+        <defs>
+          <linearGradient id="gridGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#ffd700" stop-opacity="0.03"/>
+            <stop offset="100%" stop-color="#ffd700" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="lineGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#00ff88"/>
+            <stop offset="50%" stop-color="#ffd700"/>
+            <stop offset="100%" stop-color="#ef4444"/>
+          </linearGradient>
+          <linearGradient id="areaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#00ff88" stop-opacity="0.15"/>
+            <stop offset="100%" stop-color="#ffd700" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <!-- Grid -->
+        <rect width="360" height="200" fill="url(#gridGrad)"/>
+        <g stroke="#ffd700" stroke-opacity="0.04" stroke-width="0.5">
+          <line x1="0" y1="40" x2="360" y2="40"/>
+          <line x1="0" y1="80" x2="360" y2="80"/>
+          <line x1="0" y1="120" x2="360" y2="120"/>
+          <line x1="0" y1="160" x2="360" y2="160"/>
+          <line x1="72" y1="0" x2="72" y2="200"/>
+          <line x1="144" y1="0" x2="144" y2="200"/>
+          <line x1="216" y1="0" x2="216" y2="200"/>
+          <line x1="288" y1="0" x2="288" y2="200"/>
+        </g>
+        <!-- Y-axis labels -->
+        <g font-family="JetBrains Mono" font-size="8" fill="#ffd700" fill-opacity="0.4" text-anchor="end">
+          <text x="66" y="214" class="font-mono">0×</text>
+          <text x="66" y="174" class="font-mono">2.5×</text>
+          <text x="66" y="134" class="font-mono">5×</text>
+          <text x="66" y="94" class="font-mono">7.5×</text>
+          <text x="66" y="54" class="font-mono">10×</text>
+        </g>
+        <!-- Area under curve -->
+        <path id="area-path" fill="url(#areaGrad)" d="M0,200 L0,200 Z"/>
+        <!-- Crash line -->
+        <path id="crash-line" class="crash-line" fill="none" stroke="url(#lineGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M0,200"/>
+        <!-- Current position dot -->
+        <circle id="position-dot" cx="0" cy="200" r="6" fill="#ffd700" filter="drop-shadow(0 0 8px #ffd700)" opacity="0"/>
+        <!-- Crash point marker -->
+        <g id="crash-marker" opacity="0" transform="translate(0,0)">
+          <circle cx="0" cy="0" r="8" fill="#ef4444" filter="drop-shadow(0 0 12px #ef4444)"/>
+          <text x="0" y="4" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="white" font-weight="bold" id="crash-mult-text">0.00×</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Status & Timer -->
+    <div class="w-full max-w-md mb-6 animate-slide-up stagger-2" id="status-area">
+      <div class="glass-strong rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div id="status-indicator" class="w-3 h-3 rounded-full bg-green-400 animate-pulse-glow"></div>
+          <div>
+            <p id="status-text" class="font-semibold text-sm">Next round in</p>
+            <p id="status-sub" class="text-xs text-yellow-400/60">Place your bet</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <p id="timer" class="font-mono text-2xl font-bold gradient-gold">10</p>
+          <p class="text-xs text-yellow-400/60">seconds</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Betting Controls -->
+    <div class="w-full max-w-md animate-slide-up stagger-3" id="betting-controls">
+      <!-- Bet Input Row -->
+      <div class="glass-strong rounded-xl p-4 mb-3 flex items-center gap-2">
+        <label class="text-xs font-semibold text-yellow-400/70 uppercase tracking-wider whitespace-nowrap">Bet</label>
+        <div class="flex-1 flex items-center gap-1">
+          <button class="btn-secondary w-10 h-10 rounded-lg flex items-center justify-center font-bold" id="bet-minus" aria-label="Decrease bet">−</button>
+          <input type="number" id="bet-amount" class="flex-1 glass px-3 py-2.5 rounded-lg text-center font-mono text-lg font-bold text-yellow-400 focus:border-yellow-500/50 focus:outline-none" value="10" min="1" step="1" aria-label="Bet amount in ETB">
+          <button class="btn-secondary w-10 h-10 rounded-lg flex items-center justify-center font-bold" id="bet-plus" aria-label="Increase bet">+</button>
+        </div>
+        <span class="text-xs text-yellow-400/60 font-mono whitespace-nowrap">ETB</span>
+      </div>
+
+      <!-- Quick Bet Buttons -->
+      <div class="flex gap-1.5 mb-3" id="quick-bets">
+        <button class="btn-secondary flex-1 py-2 rounded-lg text-xs font-semibold" data-bet="5">5</button>
+        <button class="btn-secondary flex-1 py-2 rounded-lg text-xs font-semibold" data-bet="10">10</button>
+        <button class="btn-secondary flex-1 py-2 rounded-lg text-xs font-semibold" data-bet="25">25</button>
+        <button class="btn-secondary flex-1 py-2 rounded-lg text-xs font-semibold" data-bet="50">50</button>
+        <button class="btn-primary flex-1 py-2 rounded-lg text-xs font-semibold" id="bet-all">All</button>
+      </div>
+
+      <!-- Auto Cashout -->
+      <div class="glass-strong rounded-xl p-3 mb-4 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <input type="checkbox" id="auto-cashout" class="w-4 h-4 accent-yellow-500 rounded border-yellow-500/30 bg-transparent">
+          <label for="auto-cashout" class="text-sm font-medium">Auto Cashout</label>
+        </div>
+        <input type="number" id="auto-cashout-value" class="glass px-3 py-1.5 rounded-lg w-20 text-center font-mono text-sm font-bold text-yellow-400 focus:border-yellow-500/50 focus:outline-none" value="2.00" min="1.01" max="1000" step="0.01" disabled aria-label="Auto cashout multiplier">
+        <span class="text-xs text-yellow-400/60 font-mono">×</span>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-2" id="action-buttons">
+        <button class="btn-primary flex-1 py-3.5 rounded-xl font-bold text-base animate-btn-pulse" id="place-bet-btn">
+          <span id="bet-btn-text">Place Bet</span>
+          <span id="bet-btn-loading" class="hidden flex items-center gap-2">
+            <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+            <span>Betting...</span>
+          </span>
+        </button>
+        <button class="btn-danger flex-1 py-3.5 rounded-xl font-bold text-base hidden" id="cashout-btn">
+          <span id="cashout-btn-text">Cash Out</span>
+          <span class="font-mono text-lg" id="cashout-profit">+0.00</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Waiting State (when not betting) -->
+    <div class="w-full max-w-md animate-slide-up stagger-4 hidden" id="waiting-state">
+      <div class="glass rounded-xl p-6 text-center">
+        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-yellow-500/15 flex items-center justify-center">
+          <svg class="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <p class="font-semibold mb-1">Waiting for next round</p>
+        <p class="text-sm text-yellow-400/60">Round starts in <span id="wait-timer" class="font-mono font-bold">10s</span></p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Recent Crashes History Bar -->
+  <div class="fixed bottom-0 left-0 right-0 z-30 glass-strong border-t border-yellow-500/10 pb-safe pb-3 px-3 max-w-md mx-auto animate-slide-up stagger-5">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs font-semibold text-yellow-400/70 uppercase tracking-wider">Recent Crashes</span>
+      <button class="text-xs text-yellow-400/60 hover:text-yellow-400 font-medium" id="expand-history">View All</button>
+    </div>
+    <div class="flex gap-1.5 overflow-x-auto scrollbar-hide pb-1" id="history-bar" role="list" aria-label="Recent crash multipliers">
+      <!-- History items inserted here -->
+    </div>
+  </div>
+
+  <!-- Provably Fair Modal -->
+  <div id="fair-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="fair-title">
+    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+    <div class="relative glass-strong rounded-2xl p-6 max-w-sm w-full max-h-[85vh] overflow-y-auto animate-slide-up">
+      <div class="flex items-center justify-between mb-4">
+        <h2 id="fair-title" class="font-bold gradient-gold">🔐 Provably Fair</h2>
+        <button class="btn-secondary p-1.5 rounded-lg" id="close-fair">✕</button>
+      </div>
+      <div class="space-y-4 text-sm">
+        <div class="glass rounded-lg p-3">
+          <p class="text-xs text-yellow-400/60 mb-1">Server Seed (Hashed)</p>
+          <code id="server-seed-hash" class="font-mono text-xs text-yellow-400 break-all">a1b2c3d4e5f6...</code>
+        </div>
+        <div class="glass rounded-lg p-3">
+          <p class="text-xs text-yellow-400/60 mb-1">Client Seed</p>
+          <input type="text" id="client-seed" class="glass rounded px-2 py-1.5 w-full font-mono text-xs text-yellow-400" value="player-seed-abc123" readonly>
+        </div>
+        <div class="glass rounded-lg p-3">
+          <p class="text-xs text-yellow-400/60 mb-1">Nonce</p>
+          <code id="nonce-value" class="font-mono text-xs text-yellow-400">#1247</code>
+        </div>
+        <div class="glass rounded-lg p-3">
+          <p class="text-xs text-yellow-400/60 mb-1">Result</p>
+          <code id="result-value" class="font-mono text-xs text-yellow-400 break-all">Crash at 2.47×</code>
+        </div>
+        <button class="btn-primary w-full py-2 rounded-lg font-semibold text-xs" id="verify-btn">Verify on Blockchain</button>
+        <p class="text-center text-[0.6rem] text-yellow-400/50">Server seed reveals after round ends</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Game State
+    const STATE = { WAITING: 'waiting', BETTING: 'betting', FLYING: 'flying', CRASHED: 'crashed' };
+    let gameState = STATE.WAITING;
+    let currentMultiplier = 1.00;
+    let crashPoint = 0;
+    let betAmount = 0;
+    let autoCashout = 2.00;
+    let balance = 100.00;
+    let betPlaced = false;
+    let animationFrame = null;
+    let startTime = 0;
+    const history = [];
+    const maxHistory = 20;
+
+    // DOM Elements
+    const multiplierEl = document.getElementById('multiplier-value');
+    const statusIndicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+    const statusSub = document.getElementById('status-sub');
+    const timerEl = document.getElementById('timer');
+    const betAmountEl = document.getElementById('bet-amount');
+    const placeBetBtn = document.getElementById('place-bet-btn');
+    const cashoutBtn = document.getElementById('cashout-btn');
+    const betBtnText = document.getElementById('bet-btn-text');
+    const betBtnLoading = document.getElementById('bet-btn-loading');
+    const cashoutBtnText = document.getElementById('cashout-btn-text');
+    const cashoutProfit = document.getElementById('cashout-profit');
+    const bettingControls = document.getElementById('betting-controls');
+    const waitingState = document.getElementById('waiting-state');
+    const waitTimer = document.getElementById('wait-timer');
+    const autoCashoutEl = document.getElementById('auto-cashout');
+    const autoCashoutValue = document.getElementById('auto-cashout-value');
+    const historyBar = document.getElementById('history-bar');
+    const positionDot = document.getElementById('position-dot');
+    const crashLine = document.getElementById('crash-line');
+    const areaPath = document.getElementById('area-path');
+    const crashMarker = document.getElementById('crash-marker');
+    const crashMultText = document.getElementById('crash-mult-text');
+    const headerBalance = document.getElementById('header-balance');
+    const fairModal = document.getElementById('fair-modal');
+
+    // Chart dimensions
+    const CHART_W = 360;
+    const CHART_H = 200;
+    const MAX_MULT_DISPLAY = 10; // 10x on chart
+    const Y_PADDING = 20;
+
+    function multToY(mult) {
+      const clamped = Math.min(mult, MAX_MULT_DISPLAY);
+      return CHART_H - Y_PADDING - ((clamped / MAX_MULT_DISPLAY) * (CHART_H - 2 * Y_PADDING));
+    }
+    function xToPos(progress) { return progress * CHART_W; }
+
+    // Generate crash point (provably fair simulation)
+    function generateCrashPoint() {
+      const houseEdge = 0.03; // 3%
+      const random = Math.random();
+      // Exponential distribution for crash game
+      const crash = Math.floor(-Math.log(1 - random) / houseEdge * 100) / 100;
+      return Math.max(1.00, Math.min(crash, 1000));
+    }
+
+    // Update multiplier display
+    function updateMultiplier(mult) {
+      currentMultiplier = mult;
+      multiplierEl.innerHTML = `${mult.toFixed(2)}<span class="text-3xl font-medium text-yellow-400/60">×</span>`;
+      
+      // Update chart position
+      const progress = Math.min(mult / MAX_MULT_DISPLAY, 1);
+      const x = xToPos(progress);
+      const y = multToY(mult);
+      positionDot.setAttribute('cx', x);
+      positionDot.setAttribute('cy', y);
+      positionDot.style.opacity = mult > 1 ? '1' : '0';
+      
+      // Update line path
+      // We'll rebuild the path on each frame for smoothness
+    }
+
+    // Draw crash line up to current multiplier
+    function drawLineUpTo(mult) {
+      const points = [];
+      const steps = 50;
+      for (let i = 0; i <= steps; i++) {
+        const p = i / steps;
+        const m = Math.min(p * mult, mult);
+        points.push(`${xToPos(p)},${multToY(m)}`);
+      }
+      const path = `M${points.join(' L')}`;
+      crashLine.setAttribute('d', path);
+      
+      // Area path
+      const areaPoints = [...points, `${CHART_W},${CHART_H}`, `0,${CHART_H}`];
+      areaPath.setAttribute('d', `M${areaPoints.join(' L')} Z`);
+    }
+
+    // Show crash marker
+    function showCrashMarker() {
+      const x = xToPos(Math.min(crashPoint / MAX_MULT_DISPLAY, 1));
+      const y = multToY(crashPoint);
+      crashMarker.setAttribute('transform', `translate(${x},${y})`);
+      crashMultText.textContent = `${crashPoint.toFixed(2)}×`;
+      crashMarker.style.opacity = '1';
+      crashLine.classList.add('crashed');
+      
+      // Crash flash animation
+      multiplierEl.classList.add('animate-crash-flash');
+      setTimeout(() => multiplierEl.classList.remove('animate-crash-flash'), 1500);
+    }
+
+    // Particles
+    function spawnParticles(x, y, count = 12) {
+      const container = document.getElementById('particles');
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+        p.style.left = `${x + (Math.random() - 0.5) * 40}px`;
+        p.style.top = `${y + (Math.random() - 0.5) * 40}px`;
+        p.style.background = Math.random() > 0.5 ? '#ffd700' : '#00ff88';
+        p.style.width = p.style.height = `${4 + Math.random() * 4}px`;
+        p.style.animation = `particle-float ${1 + Math.random() * 1.5}s ease-out forwards`;
+        container.appendChild(p);
+        setTimeout(() => p.remove(), 2500);
+      }
+    }
+
+    // Game Loop
+    function gameLoop(timestamp) {
+      if (gameState !== STATE.FLYING) return;
+      
+      const elapsed = (timestamp - startTime) / 1000; // seconds
+      // Exponential curve: multiplier = e^(t * k) where k controls speed
+      const k = 0.15;
+      currentMultiplier = Math.exp(elapsed * k);
+      
+      if (currentMultiplier >= crashPoint) {
+        currentMultiplier = crashPoint;
+        gameLoop(timestamp); // One more frame to update UI
+        endRound(true);
+        return;
+      }
+      
+      updateMultiplier(currentMultiplier);
+      drawLineUpTo(currentMultiplier);
+      
+      // Auto cashout check
+      if (autoCashoutEl.checked && currentMultiplier >= autoCashout) {
+        cashout();
+        return;
+      }
+      
+      // Update cashout button profit
+      if (betPlaced) {
+        const profit = (betAmount * currentMultiplier - betAmount);
+        cashoutProfit.textContent = `${profit >= 0 ? '+' : ''}${profit.toFixed(2)}`;
+        cashoutBtnText.textContent = `Cash Out ${currentMultiplier.toFixed(2)}×`;
+      }
+      
+      animationFrame = requestAnimationFrame(gameLoop);
+    }
+
+    // Start new round
+    function startRound() {
+      gameState = STATE.BETTING;
+      crashPoint = generateCrashPoint();
+      currentMultiplier = 1.00;
+      betPlaced = false;
+      betAmount = 0;
+      
+      // Reset UI
+      multiplierEl.innerHTML = `1.00<span class="text-3xl font-medium text-yellow-400/60">×</span>`;
+      positionDot.style.opacity = '0';
+      crashLine.setAttribute('d', `M0,${CHART_H}`);
+      areaPath.setAttribute('d', `M0,${CHART_H} L${CHART_W},${CHART_H} Z`);
+      crashLine.classList.remove('crashed');
+      crashMarker.style.opacity = '0';
+      multiplierEl.classList.remove('animate-crash-flash');
+      
+      statusIndicator.style.background = '#ef4444';
+      statusIndicator.classList.remove('animate-pulse-glow');
+      statusText.textContent = 'Place your bet';
+      statusSub.textContent = 'Round starts soon';
+      
+      bettingControls.classList.remove('hidden');
+      waitingState.classList.add('hidden');
+      placeBetBtn.classList.remove('hidden');
+      cashoutBtn.classList.add('hidden');
+      betBtnText.classList.remove('hidden');
+      betBtnLoading.classList.add('hidden');
+      placeBetBtn.disabled = false;
+      betAmountEl.disabled = false;
+      autoCashoutEl.disabled = false;
+      autoCashoutValue.disabled = !autoCashoutEl.checked;
+      
+      // Countdown
+      let countdown = 10;
+      timerEl.textContent = countdown;
+      const countdownInterval = setInterval(() => {
+        countdown--;
+        timerEl.textContent = countdown;
+        if (countdown <= 0) {
+          clearInterval(countdownInterval);
+          if (!betPlaced) {
+            startFlying();
+          }
+        }
+      }, 1000);
+    }
+
+    // Start flying phase
+    function startFlying() {
+      gameState = STATE.FLYING;
+      statusIndicator.style.background = '#00ff88';
+      statusIndicator.classList.add('animate-pulse-glow');
+      statusText.textContent = 'Flying...';
+      statusSub.textContent = 'Cash out before crash!';
+      timerEl.textContent = '--';
+      timerEl.classList.add('gradient-gold');
+      
+      placeBetBtn.classList.add('hidden');
+      cashoutBtn.classList.remove('hidden');
+      betAmountEl.disabled = true;
+      autoCashoutEl.disabled = true;
+      autoCashoutValue.disabled = true;
+      
+      startTime = performance.now();
+      animationFrame = requestAnimationFrame(gameLoop);
+    }
+
+    // Place bet
+    function placeBet() {
+      const amt = parseFloat(betAmountEl.value);
+      if (isNaN(amt) || amt < 1) return showToast('Invalid bet amount', 'error');
+      if (amt > balance * 100) return showToast('Insufficient balance', 'error');
+      
+      betAmount = amt / 100; // Convert to ETB
+      balance -= betAmount;
+      updateBalance();
+      betPlaced = true;
+      
+      // Visual feedback
+      betBtnText.classList.add('hidden');
+      betBtnLoading.classList.remove('hidden');
+      placeBetBtn.disabled = true;
+      
+      setTimeout(() => {
+        if (gameState === STATE.BETTING) {
+          startFlying();
+        }
+      }, 500);
+    }
+
+    // Cash out
+    function cashout() {
+      if (!betPlaced || gameState !== STATE.FLYING) return;
+      
+      const payout = betAmount * currentMultiplier;
+      const profit = payout - betAmount;
+      balance += payout;
+      updateBalance();
+      betPlaced = false;
+      
+      // Add to history
+      addToHistory(currentMultiplier, profit);
+      
+      // Show profit animation
+      showToast(`Cashed out at ${currentMultiplier.toFixed(2)}×! +${profit.toFixed(2)} ETB`, 'success');
+      spawnParticles(window.innerWidth / 2, window.innerHeight / 2, 20);
+      
+      // Cancel animation
+      if (animationFrame) cancelAnimationFrame(animationFrame);
+      
+      // Wait for round to end (or crash)
+      gameState = STATE.CRASHED;
+      cashoutBtn.classList.add('hidden');
+      betBtnText.classList.remove('hidden');
+      betBtnLoading.classList.add('hidden');
+      
+      // Wait for actual crash to show marker
+      const crashWait = setInterval(() => {
+        if (currentMultiplier >= crashPoint) {
+          clearInterval(crashWait);
+          endRound(false);
+        }
+      }, 100);
+    }
+
+    // End round
+    function endRound(playerCashedOut) {
+      if (!playerCashedOut && betPlaced) {
+        // Player lost
+        betPlaced = false;
+        addToHistory(crashPoint, -betAmount);
+        showToast(`Crashed at ${crashPoint.toFixed(2)}×! Lost ${betAmount.toFixed(2)} ETB`, 'error');
+        spawnParticles(window.innerWidth / 2, window.innerHeight / 2, 15);
+      }
+      
+      showCrashMarker();
+      
+      // Wait then start next round
+      gameState = STATE.WAITING;
+      setTimeout(() => {
+        waitingState.classList.remove('hidden');
+        bettingControls.classList.add('hidden');
+        
+        let waitCount = 5;
+        waitTimer.textContent = `${waitCount}s`;
+        const waitInterval = setInterval(() => {
+          waitCount--;
+          waitTimer.textContent = `${waitCount}s`;
+          if (waitCount <= 0) {
+            clearInterval(waitInterval);
+            startRound();
+          }
+        }, 1000);
+      }, 3000);
+    }
+
+    // History
+    function addToHistory(mult, profit) {
+      const item = { mult, profit, timestamp: Date.now() };
+      history.unshift(item);
+      if (history.length > maxHistory) history.pop();
+      renderHistory();
+    }
+
+    function renderHistory() {
+      historyBar.innerHTML = history.map((h, i) => {
+        const isBigWin = h.profit > betAmount * 5;
+        const cls = `history-item px-2.5 py-1.5 rounded-lg text-center min-w-[44px] font-mono text-xs font-bold ${h.profit >= 0 ? 'win text-green-400' : 'loss text-red-400'} ${isBigWin ? 'big-win' : ''}`;
+        return `<div class="${cls}" role="listitem">${h.mult.toFixed(2)}×</div>`;
+      }).join('');
+    }
+
+    function updateBalance() {
+      headerBalance.textContent = balance.toFixed(2);
+    }
+
+    // Toast
+    function showToast(msg, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `fixed bottom-28 left-3 right-3 max-w-md mx-auto glass-strong rounded-xl p-3 flex items-center gap-2 z-50 animate-slide-up ${type === 'error' ? 'border-red-500/30' : type === 'success' ? 'border-green-500/30' : ''}`;
+      toast.innerHTML = `<span class="text-sm">${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'}</span><span class="flex-1 text-sm">${msg}</span>`;
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.animation = 'slide-up 0.2s ease-out reverse'; setTimeout(() => toast.remove(), 200); }, 2500);
+    }
+
+    // Provably Fair Modal
+    function openFairModal() {
+      fairModal.classList.remove('hidden');
+      fairModal.classList.add('flex');
+      document.getElementById('server-seed-hash').textContent = 'a1b2c3d4e5f67890...' + Math.random().toString(16).slice(2, 10);
+      document.getElementById('nonce-value').textContent = `#${Math.floor(Math.random() * 10000)}`;
+      document.getElementById('result-value').textContent = `Crash at ${crashPoint.toFixed(2)}×`;
+    }
+    function closeFairModal() {
+      fairModal.classList.add('hidden');
+      fairModal.classList.remove('flex');
+    }
+
+    // Event Listeners
+    placeBetBtn.addEventListener('click', placeBet);
+    cashoutBtn.addEventListener('click', cashout);
+    
+    betAmountEl.addEventListener('input', () => {
+      betAmountEl.value = betAmountEl.value.replace(/[^0-9]/g, '');
+    });
+    
+    document.getElementById('bet-minus').addEventListener('click', () => {
+      const v = Math.max(1, parseInt(betAmountEl.value) - 1);
+      betAmountEl.value = v;
+    });
+    document.getElementById('bet-plus').addEventListener('click', () => {
+      const v = Math.min(balance * 100, parseInt(betAmountEl.value) + 1);
+      betAmountEl.value = v;
+    });
+    document.getElementById('bet-all').addEventListener('click', () => {
+      betAmountEl.value = Math.floor(balance * 100);
+    });
+    
+    document.querySelectorAll('#quick-bets [data-bet]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        betAmountEl.value = btn.dataset.bet;
+      });
+    });
+    
+    autoCashoutEl.addEventListener('change', () => {
+      autoCashoutValue.disabled = !autoCashoutEl.checked;
+    });
+    autoCashoutValue.addEventListener('input', () => {
+      autoCashout = parseFloat(autoCashoutValue.value) || 2.00;
+    });
+    
+    document.getElementById('back-btn').addEventListener('click', () => {
+      showToast('Returning to lobby...');
+      // In real app: window.Telegram.WebApp.close()
+    });
+    
+    document.getElementById('expand-history').addEventListener('click', () => showToast('History panel coming soon'));
+    document.getElementById('verify-btn').addEventListener('click', () => showToast('Opening verifier...'));
+    document.getElementById('close-fair').addEventListener('click', closeFairModal);
+    document.getElementById('fair-modal').addEventListener('click', (e) => { if (e.target === fairModal) closeFairModal(); });
+    
+    // Keyboard: Space to cashout
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && gameState === STATE.FLYING && betPlaced) {
+        e.preventDefault();
+        cashout();
+      }
+    });
+
+    // Start
+    updateBalance();
+    renderHistory();
+    startRound();
+    
+    console.log('🎮 Crash Game loaded - Press SPACE to cash out');
+  </script>
+</body>
+</html>

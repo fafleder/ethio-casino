@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="theme-color" content="#1a1a2e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Ethio Casino - Telegram Mini App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/games.css">
+</head>
+<body>
+    <!-- Telegram Web App SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">Loading Casino...</p>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="app hidden">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1 class="logo">🎰 Ethio Casino</h1>
+            </div>
+            <div class="header-center">
+                <div class="balance-display">
+                    <span class="balance-label">BALANCE</span>
+                    <span id="balance" class="balance-amount">0.00</span>
+                    <span class="balance-currency">ETB</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="settings-btn" class="icon-btn" aria-label="Settings">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                </button>
+                <button id="menu-btn" class="icon-btn" aria-label="Menu">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="nav-tabs" id="nav-tabs" role="tablist">
+            <button class="nav-tab active" role="tab" data-tab="games" aria-selected="true">🎮 Games</button>
+            <button class="nav-tab" role="tab" data-tab="promos" aria-selected="false">🎁 Promos</button>
+            <button class="nav-tab" role="tab" data-tab="history" aria-selected="false">📜 History</button>
+            <button class="nav-tab" role="tab" data-tab="profile" aria-selected="false">👤 Profile</button>
+        </nav>
+
+        <!-- Tab Panels -->
+        <main class="main-content" role="tabpanel">
+            <!-- Games Tab -->
+            <section id="tab-games" class="tab-panel active" role="tabpanel">
+                <div class="games-grid" id="games-grid">
+                    <!-- Game cards will be inserted here -->
+                </div>
+            </section>
+
+            <!-- Promos Tab -->
+            <section id="tab-promos" class="tab-panel" role="tabpanel" hidden>
+                <div class="promos-container">
+                    <div class="promo-card daily-bonus">
+                        <div class="promo-icon">🎁</div>
+                        <div class="promo-content">
+                            <h3>Daily Bonus</h3>
+                            <p>Claim free chips every 24 hours!</p>
+                            <div class="promo-timer" id="daily-timer">23:59:59</div>
+                        </div>
+                        <button id="claim-daily" class="promo-btn primary">Claim Now</button>
+                    </div>
+                    
+                    <div class="promo-card referral">
+                        <div class="promo-icon">👥</div>
+                        <div class="promo-content">
+                            <h3>Referral Program</h3>
+                            <p>Invite friends, earn 10% of their bets!</p>
+                            <div class="referral-code" id="referral-code">ETHIO-<span id="ref-code">ABC123</span></div>
+                        </div>
+                        <button id="copy-ref" class="promo-btn secondary">Copy Code</button>
+                    </div>
+
+                    <div class="promo-card leaderboard">
+                        <div class="promo-icon">🏆</div>
+                        <div class="promo-content">
+                            <h3>Weekly Leaderboard</h3>
+                            <p>Top 10 players share 50,000 ETB prize pool</p>
+                            <a href="#" class="promo-link">View Rankings →</a>
+                        </div>
+                        <button class="promo-btn secondary">Join Now</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- History Tab -->
+            <section id="tab-history" class="tab-panel" role="tabpanel" hidden>
+                <div class="history-filters">
+                    <select id="history-game-filter" class="filter-select">
+                        <option value="">All Games</option>
+                    </select>
+                    <select id="history-type-filter" class="filter-select">
+                        <option value="">All Types</option>
+                        <option value="bet">Bets</option>
+                        <option value="win">Wins</option>
+                    </select>
+                </div>
+                <div class="history-list" id="history-list">
+                    <div class="empty-state">
+                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                        <p>No game history yet</p>
+                        <span>Play a game to see your history here</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile Tab -->
+            <section id="tab-profile" class="tab-panel" role="tabpanel" hidden>
+                <div class="profile-card">
+                    <div class="profile-avatar" id="profile-avatar">👤</div>
+                    <h2 id="profile-name">Player</h2>
+                    <p id="profile-username">@username</p>
+                    <div class="profile-stats">
+                        <div class="stat">
+                            <span class="stat-value" id="stat-games">0</span>
+                            <span class="stat-label">Games Played</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="stat-wagered">0.00</span>
+                            <span class="stat-label">Total Wagered</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="stat-won">0.00</span>
+                            <span class="stat-label">Total Won</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value" id="stat-net">0.00</span>
+                            <span class="stat-label">Net Profit</span>
+                        </div>
+                    </div>
+                    <div class="profile-actions">
+                        <button id="provably-fair-btn" class="action-btn">🔐 Provably Fair</button>
+                        <button id="support-btn" class="action-btn">💬 Support</button>
+                        <button id="faq-btn" class="action-btn">❓ FAQ</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Navigation (Mobile) -->
+        <nav class="bottom-nav" role="navigation">
+            <button class="bottom-nav-item active" data-tab="games">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 17h8M12 17v-5"/></svg>
+                <span>Games</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="promos">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5V6H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5"/><path d="M18 12a2 2 0 0 0 0-4 2 2 0 0 0 0 4"/><path d="M12 12a2 2 0 0 0 0-4 2 2 0 0 0 0 4"/><path d="M6 12a2 2 0 0 0 0-4 2 2 0 0 0 0 4"/></svg>
+                <span>Promos</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="history">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                <span>History</span>
+            </button>
+            <button class="bottom-nav-item" data-tab="profile">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Profile</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Game Modals -->
+    <div id="game-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="game-modal-title">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="game-modal-title">Game</h2>
+                <button class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body" id="game-modal-body">
+                <!-- Game content injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Bet Modal -->
+    <div id="bet-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="bet-modal-title">
+        <div class="modal-overlay"></div>
+        <div class="modal-content bet-modal-content">
+            <div class="modal-header">
+                <h2 id="bet-modal-title">Place Bet</h2>
+                <button class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="bet-form">
+                    <div class="bet-amount-input">
+                        <label>Bet Amount (ETB)</label>
+                        <div class="amount-input-wrapper">
+                            <input type="number" id="bet-amount" class="amount-input" min="1" step="1" placeholder="100">
+                            <span class="currency">ETB</span>
+                        </div>
+                        <div class="quick-bets" id="quick-bets"></div>
+                    </div>
+                    <div class="bet-balance">
+                        Balance: <span id="bet-balance">0.00</span> ETB
+                    </div>
+                    <div class="bet-actions">
+                        <button id="bet-cancel" class="btn secondary">Cancel</button>
+                        <button id="bet-confirm" class="btn primary">Place Bet</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Provably Fair Modal -->
+    <div id="fair-modal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="fair-modal-title">
+        <div class="modal-overlay"></div>
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2 id="fair-modal-title">🔐 Provably Fair Verification</h2>
+                <button class="modal-close" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="fair-explanation">
+                    <h3>How It Works</h3>
+                    <p>Every game result is generated using a cryptographic algorithm that you can verify. The server generates a secret seed, hashes it, and shows you the hash BEFORE you play. After the game, the server reveals the seed so you can verify the result wasn't manipulated.</p>
+                </div>
+                <div class="fair-verifier">
+                    <h3>Verify Last Game</h3>
+                    <div class="verifier-form">
+                        <div class="form-group">
+                            <label>Server Seed (Revealed)</label>
+                            <input type="text" id="verify-server-seed" class="form-input" placeholder="Enter revealed server seed">
+                        </div>
+                        <div class="form-group">
+                            <label>Client Seed</label>
+                            <input type="text" id="verify-client-seed" class="form-input" placeholder="Your client seed">
+                        </div>
+                        <div class="form-group">
+                            <label>Nonce</label>
+                            <input type="number" id="verify-nonce" class="form-input" placeholder="Game nonce">
+                        </div>
+                        <button id="verify-btn" class="btn primary">Verify Result</button>
+                    </div>
+                    <div class="verification-result hidden" id="verification-result">
+                        <div class="result-status"></div>
+                        <pre class="result-details" id="result-details"></pre>
+                    </div>
+                </div>
+                <div class="fair-history" id="fair-history">
+                    <h3>Recent Seeds</h3>
+                    <div class="seed-list" id="seed-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container" role="region" aria-live="polite"></div>
+
+    <!-- Scripts -->
+    <script src="js/api.js"></script>
+    <script src="js/games.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
