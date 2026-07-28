@@ -253,7 +253,12 @@ app.post('/api/bonus/daily', authMiddleware, async (req, res) => {
   }
 });
 
-// Telegram webhook endpoint
+// Serve Mini App static files in production
+if (config.NODE_ENV === 'production') {
+  app.use(express.static('dist/miniapp'));
+}
+
+// Telegram webhook endpoint (must be before catch-all route)
 app.post('/webhook', async (req: Request, res: Response) => {
   try {
     await bot.handleUpdate(req.body);
@@ -264,10 +269,8 @@ app.post('/webhook', async (req: Request, res: Response) => {
   }
 });
 
-// Serve Mini App static files in production
+// Catch-all for Mini App (must be after webhook)
 if (config.NODE_ENV === 'production') {
-  app.use(express.static('dist/miniapp'));
-  
   app.get('*', (req, res) => {
     res.sendFile('index.html', { root: 'dist/miniapp' });
   });
