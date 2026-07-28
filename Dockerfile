@@ -13,6 +13,7 @@ RUN npm ci
 # Copy source code
 COPY src/ ./src/
 COPY miniapp/ ./miniapp/
+COPY vite.config.ts ./
 
 # Build TypeScript
 RUN npm run build
