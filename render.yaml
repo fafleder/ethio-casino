@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: ethio-casino-api
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ethio-casino-db
+          property: connectionString
+      - key: BOT_TOKEN
+        sync: false
+      - key: BOT_USERNAME
+        value: ethioaugames_bot
+      - key: WEBAPP_URL
+        value: https://ethio-casino-api.onrender.com
+      - key: OWNER_TELEGRAM_IDS
+        value: "361695664"
+      - key: PORT
+        value: "10000"
+    healthCheckPath: /health
+
+  - type: pserv
+    name: ethio-casino-db
+    env: postgresql
+    plan: free
+    postgresMajorVersion: 15
