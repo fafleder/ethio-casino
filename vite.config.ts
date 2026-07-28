@@ -8,7 +8,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: 'miniapp/index.html',
+        main: 'index.html',
       },
     },
   },
