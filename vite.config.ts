@@ -9,7 +9,7 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'miniapp/index.html'),
+        main: 'index.html',
       },
     },
   },
