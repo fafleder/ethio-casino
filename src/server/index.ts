@@ -267,7 +267,14 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
 // Serve Mini App static files in production
 if (config.NODE_ENV === 'production') {
-  app.use(express.static('dist/miniapp'));
+  // Static files only for GET requests
+  app.use((req, res, next) => {
+    if (req.method === 'GET') {
+      express.static('dist/miniapp')(req, res, next);
+    } else {
+      next();
+    }
+  });
   
   // Catch-all for Mini App (must be after webhook and API routes)
   app.get('*', (req, res) => {
