@@ -266,10 +266,10 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
 // Serve Mini App static files in production
 if (config.NODE_ENV === 'production') {
-  app.use(express.static('miniapp'));
+  app.use(express.static('dist/miniapp'));
   
   app.get('*', (req, res) => {
-    res.sendFile('index.html', { root: 'miniapp' });
+    res.sendFile('index.html', { root: 'dist/miniapp' });
   });
 }
 

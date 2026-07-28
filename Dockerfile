@@ -1,4 +1,5 @@
 # Build stage
+# Build stage
 FROM node:22-alpine AS builder
 
 WORKDIR /app
@@ -6,6 +7,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 COPY tsconfig.json ./
+COPY vite.config.ts ./
 
 # Install dependencies
 RUN npm ci
@@ -13,7 +15,6 @@ RUN npm ci
 # Copy source code
 COPY src/ ./src/
 COPY miniapp/ ./miniapp/
-COPY vite.config.ts ./
 
 # Build TypeScript
 RUN npm run build
@@ -34,7 +35,6 @@ RUN addgroup -g 1001 -S nodejs && \
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/miniapp ./miniapp
 
 # Create data directory for SQLite
 RUN mkdir -p data && chown -R nodejs:nodejs data
