@@ -253,9 +253,10 @@ app.post('/api/bonus/daily', authMiddleware, async (req, res) => {
   }
 });
 
-// Telegram webhook endpoint (must be before static files)
+// Telegram webhook endpoint (must be FIRST, before static files)
 app.post('/webhook', async (req: Request, res: Response) => {
   try {
+    console.log('Webhook received:', JSON.stringify(req.body).substring(0, 200));
     await bot.handleUpdate(req.body);
     res.json({ ok: true });
   } catch (error) {
