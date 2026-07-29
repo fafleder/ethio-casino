@@ -249,7 +249,9 @@ async function startBot() {
       await bot.telegram.setWebhook(`${config.WEBAPP_URL}/webhook`);
       console.log('✅ Webhook set');
     } else {
-      // Polling mode for development
+      // Polling mode for development - delete any existing webhook first
+      await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+      console.log('🗑️ Deleted existing webhook');
       await bot.launch();
       console.log('✅ Bot started in polling mode');
     }
