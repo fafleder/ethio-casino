@@ -15,7 +15,7 @@ services:
         value: "8892760229:AAFcq9B9Bz3pyWLstU036sAJs3p2nUdVeV0"
         sync: false
       - key: BOT_USERNAME
-        value: "ethioaugames_bot"
+        value: ethioaugames_bot
       - key: WEBAPP_URL
         value: "https://ethio-casino.onrender.com"
       - key: OWNER_TELEGRAM_IDS
