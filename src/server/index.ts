@@ -1,9 +1,11 @@
+import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import { bot } from '../bot';
 import { gameService } from '../games/game-service';
 import { config } from '../config';
 import { ProvablyFairEngine } from '../games/provably-fair';
 import crypto from 'crypto';
+import { initSchema } from '../database';
 
 const app = express();
 app.use(express.json());
@@ -14,29 +16,29 @@ function validateInitData(initData: string): { valid: boolean; user?: any } {
     const params = new URLSearchParams(initData);
     const hash = params.get('hash');
     params.delete('hash');
-    
+
     const dataCheckString = Array.from(params.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${k}=${v}`)
       .join('\n');
-    
+
     const secretKey = crypto.createHmac('sha256', 'WebAppData').update(config.BOT_TOKEN).digest();
     const calculatedHash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
-    
+
     if (calculatedHash !== hash) {
       return { valid: false };
     }
-    
+
     // Check auth_date is recent (within 24 hours)
     const authDate = parseInt(params.get('auth_date') || '0');
     const now = Math.floor(Date.now() / 1000);
     if (now - authDate > 86400) {
       return { valid: false };
     }
-    
+
     const userParam = params.get('user');
     const user = userParam ? JSON.parse(userParam) : undefined;
-    
+
     return { valid: true, user };
   } catch (error) {
     console.error('InitData validation error:', error);
@@ -47,16 +49,16 @@ function validateInitData(initData: string): { valid: boolean; user?: any } {
 // Middleware to authenticate Mini App requests
 const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
   const initData = req.headers['x-telegram-init-data'] as string;
-  
+
   if (!initData) {
     return res.status(401).json({ error: 'Missing init data' });
   }
-  
+
   const { valid, user } = validateInitData(initData);
   if (!valid || !user) {
     return res.status(401).json({ error: 'Invalid init data' });
   }
-  
+
   (req as any).telegramUser = user;
   (req as any).initData = initData;
   next();
@@ -110,28 +112,28 @@ app.get('/api/user/history', authMiddleware, async (req, res) => {
     const offset = parseInt(req.query.offset as string) || 0;
     const gameId = req.query.game as string;
     const type = req.query.type as string;
-    
+
     let query = 'SELECT * FROM game_sessions WHERE user_id = $1';
     const params: any[] = [userId];
     let paramIndex = 2;
-    
+
     if (gameId) {
       query += ` AND game_id = $${paramIndex++}`;
       params.push(gameId);
     }
-    
+
     if (type === 'win') {
       query += ` AND is_win = TRUE`;
     } else if (type === 'loss') {
       query += ` AND is_win = FALSE`;
     }
-    
+
     query += ` ORDER BY created_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex}`;
     params.push(limit, offset);
-    
+
     const { query: queryFn } = await import('../database/index.js');
     const result = await queryFn(query, params);
-    
+
     res.json({ history: result.rows });
   } catch (error) {
     console.error('Get history error:', error);
@@ -168,13 +170,13 @@ app.post('/api/game/play', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).telegramUser.id;
     const { game_id, bet_amount, client_seed, game_data } = req.body;
-    
+
     if (!game_id || !bet_amount || !client_seed) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
-    
+
     const result = await gameService.placeBet(userId, game_id, bet_amount, client_seed, game_data || {});
-    
+
     res.json({
       session: result.session,
       result: result.result,
@@ -190,14 +192,14 @@ app.post('/api/game/play', authMiddleware, async (req, res) => {
 app.post('/api/game/verify', authMiddleware, async (req, res) => {
   try {
     const { server_seed, client_seed, nonce } = req.body;
-    
+
     if (!server_seed || !client_seed || nonce === undefined) {
       return res.status(400).json({ error: 'Missing verification parameters' });
     }
-    
+
     const pfEngine = new ProvablyFairEngine(server_seed);
     const result = pfEngine.generateResult(client_seed, nonce);
-    
+
     res.json({
       verified: true,
       result: result.result,
@@ -214,7 +216,7 @@ app.post('/api/bonus/daily', authMiddleware, async (req, res) => {
   try {
     const userId = (req as any).telegramUser.id;
     const { query: queryFn } = await import('../database/index.js');
-    
+
     // Check if already claimed today
     const lastClaim = await queryFn(
       `SELECT created_at FROM transactions 
@@ -223,29 +225,29 @@ app.post('/api/bonus/daily', authMiddleware, async (req, res) => {
        ORDER BY created_at DESC LIMIT 1`,
       [userId]
     );
-    
+
     if (lastClaim.rows.length > 0) {
       return res.status(400).json({ error: 'Daily bonus already claimed' });
     }
-    
+
     // Get user
-        const userResult = await queryFn('SELECT balance FROM users WHERE id = $1', [userId]);
-        const user = userResult.rows[0];
-        if (!user) {
-          return res.status(404).json({ error: 'User not found' });
-        }
+    const userResult = await queryFn('SELECT balance FROM users WHERE id = $1', [userId]);
+    const user = userResult.rows[0];
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
-        // Calculate bonus
-        const bonusAmount = 10000; // 100 ETB
-        const newBalance = user.balance + bonusAmount;
+    // Calculate bonus
+    const bonusAmount = 10000; // 100 ETB
+    const newBalance = user.balance + bonusAmount;
 
-        await queryFn('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, userId]);
-        await queryFn(
-          `INSERT INTO transactions (user_id, type, amount, balance_before, balance_after, description)
-           VALUES ($1, 'bonus', $2, $3, $4, 'Daily login bonus')`,
-          [userId, bonusAmount, user.balance, newBalance]
-        );
-    
+    await queryFn('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, userId]);
+    await queryFn(
+      `INSERT INTO transactions (user_id, type, amount, balance_before, balance_after, description)
+       VALUES ($1, 'bonus', $2, $3, $4, 'Daily login bonus')`,
+      [userId, bonusAmount, user.balance, newBalance]
+    );
+
     res.json({ bonus: bonusAmount, newBalance });
   } catch (error) {
     console.error('Claim bonus error:', error);
@@ -253,7 +255,7 @@ app.post('/api/bonus/daily', authMiddleware, async (req, res) => {
   }
 });
 
-// Telegram webhook endpoint (must be FIRST, before static files)
+// Telegram webhook endpoint
 app.post('/webhook', async (req: Request, res: Response) => {
   try {
     console.log('Webhook received:', JSON.stringify(req.body).substring(0, 200));
@@ -267,15 +269,8 @@ app.post('/webhook', async (req: Request, res: Response) => {
 
 // Serve Mini App static files in production
 if (config.NODE_ENV === 'production') {
-  // Static files only for GET requests
-  app.use((req, res, next) => {
-    if (req.method === 'GET') {
-      express.static('dist/miniapp')(req, res, next);
-    } else {
-      next();
-    }
-  });
-  
+  app.use(express.static('dist/miniapp'));
+
   // Catch-all for Mini App (must be after webhook and API routes)
   app.get('*', (req, res) => {
     res.sendFile('index.html', { root: 'dist/miniapp' });
@@ -289,10 +284,23 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // Start server
-const PORT = config.PORT;
-app.listen(PORT, () => {
-  console.log(`🚀 API Server running on port ${PORT}`);
-  console.log(`🌍 Environment: ${config.NODE_ENV}`);
-});
+async function startServer() {
+  try {
+    // Initialize database
+    await initSchema();
+    console.log('✅ Database initialized');
+
+    const PORT = config.PORT;
+    app.listen(PORT, () => {
+      console.log(`🚀 API Server running on port ${PORT}`);
+      console.log(`🌍 Environment: ${config.NODE_ENV}`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 export { app };

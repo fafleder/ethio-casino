@@ -1,6 +1,5 @@
 import { query, getClient } from '../database';
-import { config } from '../config';
-import { ProvablyFairEngine, GameResult, ProvablyFairResult } from './provably-fair';
+import { ProvablyFairEngine, GameResult } from './provably-fair';
 import { randomBytes } from 'crypto';
 
 export interface GameSession {
@@ -30,21 +29,16 @@ export interface GameConfig {
 }
 
 export class GameService {
-  private pfEngine: ProvablyFairEngine;
   private serverSeeds: Map<number, { seed: string; hash: string; revealed: boolean }> = new Map();
 
-  constructor() {
-    this.pfEngine = new ProvablyFairEngine();
-  }
-
   async getGames(): Promise<GameConfig[]> {
-    const res = await query<GameConfig>('SELECT * FROM games WHERE is_active = TRUE ORDER BY id');
-    return res.rows;
+    const res = await query('SELECT * FROM games WHERE is_active = TRUE ORDER BY id');
+    return res.rows as GameConfig[];
   }
 
   async getGame(gameId: string): Promise<GameConfig | null> {
-    const res = await query<GameConfig>('SELECT * FROM games WHERE id = $1 AND is_active = TRUE', [gameId]);
-    return res.rows[0] || null;
+    const res = await query('SELECT * FROM games WHERE id = $1 AND is_active = TRUE', [gameId]);
+    return (res.rows[0] as GameConfig) || null;
   }
 
   async getOrCreateUser(userId: number, username?: string, firstName?: string, lastName?: string, languageCode?: string) {
@@ -69,27 +63,28 @@ export class GameService {
 
   async generateServerSeed(userId: number): Promise<string> {
     const seed = randomBytes(32).toString('hex');
-    const hash = this.pfEngine['hashServerSeed'](seed);
-    
+    const pfEngine = new ProvablyFairEngine(seed);
+    const hash = pfEngine.getServerSeedHash();
+
     // Store in database
     await query(
       'INSERT INTO server_seeds (seed_hash, seed) VALUES ($1, $2) ON CONFLICT (seed_hash) DO NOTHING',
       [hash, seed]
     );
-    
+
     // Store in memory for quick access
     this.serverSeeds.set(userId, { seed, hash, revealed: false });
-    
+
     return hash;
   }
 
   async getServerSeedHash(userId: number): Promise<string | null> {
     const cached = this.serverSeeds.get(userId);
     if (cached) return cached.hash;
-    
+
     // Check database for unrevealed seed
     const res = await query(
-      'SELECT seed_hash FROM server_seeds WHERE seed_hash IN (SELECT seed_hash FROM server_seeds WHERE revealed_at IS NULL ORDER BY created_at DESC LIMIT 1)'
+      'SELECT seed_hash FROM server_seeds WHERE revealed_at IS NULL ORDER BY created_at DESC LIMIT 1'
     );
     return res.rows[0]?.seed_hash || null;
   }
@@ -112,17 +107,17 @@ export class GameService {
     gameData: Record<string, any>
   ): Promise<{ session: GameSession; result: GameResult; newBalance: number }> {
     const client = await getClient();
-    
+
     try {
       await client.query('BEGIN');
-      
+
       // Get user and lock balance
       const userRes = await client.query('SELECT * FROM users WHERE id = $1 FOR UPDATE', [userId]);
       const user = userRes.rows[0];
       if (!user) throw new Error('User not found');
       if (user.is_banned) throw new Error('User is banned');
       if (user.balance < betAmount) throw new Error('Insufficient balance');
-      
+
       // Get game config
       const gameRes = await client.query('SELECT * FROM games WHERE id = $1 AND is_active = TRUE', [gameId]);
       const game = gameRes.rows[0];
@@ -130,63 +125,71 @@ export class GameService {
       if (betAmount < game.min_bet || betAmount > game.max_bet) {
         throw new Error(`Bet must be between ${game.min_bet} and ${game.max_bet}`);
       }
-      
+
       // Get or generate server seed
       let serverSeedHash = await this.getServerSeedHash(userId);
       if (!serverSeedHash) {
         serverSeedHash = await this.generateServerSeed(userId);
       }
-      
+
       // Get next nonce
       const nonceRes = await client.query(
         'SELECT COALESCE(MAX(nonce), 0) + 1 as next_nonce FROM game_sessions WHERE user_id = $1',
         [userId]
       );
       const nonce = nonceRes.rows[0].next_nonce;
-      
-      // Get server seed for this nonce
+
+      // Get server seed
       const seedRes = await client.query(
         'SELECT seed FROM server_seeds WHERE seed_hash = $1 AND revealed_at IS NULL',
         [serverSeedHash]
       );
       const serverSeed = seedRes.rows[0]?.seed;
       if (!serverSeed) throw new Error('Server seed not found');
-      
+
       // Create PF engine with server seed
       const pfEngine = new ProvablyFairEngine(serverSeed);
-      
+
       // Play the game
       let result: GameResult;
       switch (gameId) {
         case 'dice':
-          result = pfEngine.diceRoll(clientSeed, nonce, gameData.target, gameData.condition);
+          result = pfEngine.dice(clientSeed, nonce, gameData.target, gameData.condition);
           break;
         case 'coinflip':
-          result = pfEngine.coinFlip(clientSeed, nonce, gameData.choice);
+          result = pfEngine.coinflip(clientSeed, nonce, gameData.choice);
           break;
         case 'slots':
-          result = pfEngine.slots(clientSeed, nonce, game.config.symbols || ['🍒', '🍋', '🍊', '🍇', '⭐', '7️⃣']);
+          result = pfEngine.slots(clientSeed, nonce);
           break;
         case 'crash':
-          result = pfEngine.crash(clientSeed, nonce, game.config.crash_rate || 0.03);
+          result = pfEngine.crash(clientSeed, nonce);
           break;
         case 'plinko':
-          result = pfEngine.plinko(clientSeed, nonce, game.config.rows || 16, gameData.risk || 'medium');
+          result = pfEngine.plinko(clientSeed, nonce, game.config?.rows || 16, gameData.risk || 'medium');
           break;
         case 'mines':
-          result = pfEngine.mines(clientSeed, nonce, game.config.grid_size || 5, gameData.mines || 3, gameData.clicks || []);
+          result = pfEngine.mines(
+            clientSeed, 
+            nonce, 
+            game.config?.grid_size || 5, 
+            gameData.mines || 3, 
+            gameData.clicks || []
+          );
           break;
         default:
           throw new Error('Unknown game');
       }
-      
+
       const payout = result.isWin ? Math.floor(betAmount * result.multiplier) : 0;
       const newBalance = user.balance - betAmount + payout;
-      
+
       // Update user balance
-      await client.query('UPDATE users SET balance = $1, total_wagered = total_wagered + $2, total_won = total_won + $3, games_played = games_played + 1 WHERE id = $4', 
-        [newBalance, betAmount, payout, userId]);
-      
+      await client.query(
+        'UPDATE users SET balance = $1, total_wagered = total_wagered + $2, total_won = total_won + $3, games_played = games_played + 1 WHERE id = $4',
+        [newBalance, betAmount, payout, userId]
+      );
+
       // Record game session
       const sessionRes = await client.query(
         `INSERT INTO game_sessions (user_id, game_id, bet_amount, result, payout, is_win, server_seed, client_seed, nonce)
@@ -194,14 +197,15 @@ export class GameService {
          RETURNING *`,
         [userId, gameId, betAmount, JSON.stringify(result.details), payout, result.isWin, serverSeed, clientSeed, nonce]
       );
-      
-      // Record transactions
+
+      // Record bet transaction
       await client.query(
         `INSERT INTO transactions (user_id, type, amount, balance_before, balance_after, game_session_id, description)
          VALUES ($1, 'bet', $2, $3, $4, $5, $6)`,
         [userId, -betAmount, user.balance, user.balance - betAmount, sessionRes.rows[0].id, `Bet on ${game.name}`]
       );
-      
+
+      // Record win transaction if won
       if (payout > 0) {
         await client.query(
           `INSERT INTO transactions (user_id, type, amount, balance_before, balance_after, game_session_id, description)
@@ -209,7 +213,7 @@ export class GameService {
           [userId, payout, user.balance - betAmount, newBalance, sessionRes.rows[0].id, `Win on ${game.name}`]
         );
       }
-      
+
       // Update daily stats
       await client.query(
         `INSERT INTO daily_stats (date, total_bets, total_wins, total_wagered, total_payout, house_profit, games_played)
@@ -223,12 +227,12 @@ export class GameService {
            games_played = daily_stats.games_played + 1`,
         [result.isWin ? 1 : 0, betAmount, payout, betAmount - payout]
       );
-      
+
       await client.query('COMMIT');
-      
+
       return {
         session: sessionRes.rows[0],
-        result,
+        result: { ...result, payout },
         newBalance,
       };
     } catch (error) {
@@ -240,11 +244,11 @@ export class GameService {
   }
 
   async getGameHistory(userId: number, limit: number = 50, offset: number = 0): Promise<GameSession[]> {
-    const res = await query<GameSession>(
+    const res = await query(
       'SELECT * FROM game_sessions WHERE user_id = $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3',
       [userId, limit, offset]
     );
-    return res.rows;
+    return res.rows as GameSession[];
   }
 
   async getUserStats(userId: number) {
@@ -283,17 +287,16 @@ export class GameService {
       'SELECT * FROM game_sessions WHERE id = $1 AND user_id = $2',
       [sessionId, userId]
     );
-    
+
     if (!res.rows[0]) return null;
-    
+
     const session = res.rows[0];
-    const verified = this.pfEngine.verifyResult(
-      session.server_seed,
-      session.client_seed,
-      session.nonce,
-      session.result.roll || 0 // Would need proper result parsing
-    );
-    
+    const pfEngine = new ProvablyFairEngine(session.server_seed);
+    const verification = pfEngine.generateResult(session.client_seed, session.nonce);
+
+    // Compare hashes
+    const verified = verification.hash === session.result?.hash;
+
     return { verified, result: session.result };
   }
 }

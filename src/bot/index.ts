@@ -1,6 +1,5 @@
-// Load dotenv first
 import 'dotenv/config';
-import { Telegraf, Context, Markup, Scenes, session } from 'telegraf';
+import { Telegraf, Context, Markup, session } from 'telegraf';
 import { config } from '../config';
 import { gameService } from '../games/game-service';
 import { initSchema } from '../database';
@@ -78,7 +77,7 @@ bot.start(async (ctx) => {
     ctx.from!.last_name,
     ctx.from!.language_code
   );
-  
+
   const welcomeMessage = `
 🎰 <b>Welcome to Ethio Auto Casino!</b> 🎰
 
@@ -90,7 +89,7 @@ Hey ${ctx.from!.first_name}! Ready to play?
 
 Choose a game below or use the menu:
   `.trim();
-  
+
   await ctx.replyWithHTML(welcomeMessage, gameKeyboard);
 });
 
@@ -114,7 +113,7 @@ bot.hears('💰 Balance', async (ctx) => {
 bot.hears('📊 Stats', async (ctx) => {
   const stats = await gameService.getUserStats(ctx.userId!);
   const winRate = stats.games_played > 0 ? ((stats.wins / stats.games_played) * 100).toFixed(1) : '0.0';
-  
+
   await ctx.replyWithHTML(`
 📊 <b>Your Statistics</b>
 
@@ -193,7 +192,7 @@ bot.on('web_app_data', async (ctx) => {
     if (!webAppData) return;
     const data = JSON.parse(webAppData.data);
     console.log('📱 WebApp data received:', data);
-    
+
     if (data.action === 'play_game') {
       // Game was played in Mini App, result sent back
       await ctx.replyWithHTML(`
@@ -242,7 +241,7 @@ async function startBot() {
     // Initialize database
     await initSchema();
     console.log('✅ Database initialized');
-    
+
     // Start bot
     if (config.NODE_ENV === 'production' && config.WEBAPP_URL) {
       // Webhook mode for production
@@ -250,20 +249,26 @@ async function startBot() {
       console.log('✅ Webhook set');
     } else {
       // Polling mode for development - delete any existing webhook first
-      await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-      console.log('🗑️ Deleted existing webhook');
+      try {
+        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+        console.log('🗑️ Deleted existing webhook');
+      } catch (err: any) {
+        // Ignore 404 if no webhook was set
+        if (err.response?.error_code !== 404) throw err;
+        console.log('🗑️ No webhook to delete');
+      }
       await bot.launch();
       console.log('✅ Bot started in polling mode');
     }
-    
+
     // Enable graceful stop
     process.once('SIGINT', () => bot.stop('SIGINT'));
     process.once('SIGTERM', () => bot.stop('SIGTERM'));
-    
+
     // Keep process alive
     console.log('🤖 Bot is running... Press Ctrl+C to stop');
     await new Promise(() => {}); // Never resolves - keeps process alive
-    
+
   } catch (error) {
     console.error('❌ Failed to start bot:', error);
     process.exit(1);
