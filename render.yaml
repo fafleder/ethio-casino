@@ -12,12 +12,12 @@ services:
           name: ethio-casino-db
           property: connectionString
       - key: BOT_TOKEN
-        value: 8892760229:AAFcq9B9Bz3pyWLstU036sAJs3p2nUdVeV0
+        value: "8892760229:AAFcq9B9Bz3pyWLstU036sAJs3p2nUdVeV0"
         sync: false
       - key: BOT_USERNAME
-        value: ethioaugames_bot
+        value: "ethioaugames_bot"
       - key: WEBAPP_URL
-        value: "https://ethio-casino-api.onrender.com"
+        value: "https://ethio-casino.onrender.com"
       - key: OWNER_TELEGRAM_IDS
         value: "361695664"
       - key: PORT
