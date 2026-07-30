@@ -16,7 +16,7 @@ services:
       - key: BOT_USERNAME
         value: ethioaugames_bot
       - key: WEBAPP_URL
-        value: https://ethio-casino-api.onrender.com
+        value: https://ethio-casino.onrender.com
       - key: OWNER_TELEGRAM_IDS
         value: "361695664"
       - key: PORT
