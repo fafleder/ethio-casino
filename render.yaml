@@ -11,7 +11,7 @@ services:
         fromDatabase:
           name: ethio-casino-db
           property: connectionString
-      - key: BOT_TOKEN
+      - key: 8892760229:AAFcq9B9Bz3pyWLstU036sAJs3p2nUdVeV0
         sync: false
       - key: BOT_USERNAME
         value: ethioaugames_bot
