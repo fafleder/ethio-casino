@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import { Telegraf, Context, Markup, session } from 'telegraf';
-import { config } from '../config';
-import { gameService } from '../games/game-service';
-import { initSchema } from '../database';
-import { ProvablyFairEngine } from '../games/provably-fair';
+import { config } from '../config/index.js';
+import { gameService } from '../games/index.js';
+import { initSchema } from '../database/index.js';
+import { ProvablyFairEngine } from '../games/index.js';
 
 // Extend Telegraf Context
 interface BotContext extends Context {

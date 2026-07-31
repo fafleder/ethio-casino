@@ -1,5 +1,5 @@
 import { Pool, PoolClient, QueryResult as PgQueryResult } from 'pg';
-import { config } from '../config';
+import { config } from '../config/index.js';
 
 export interface QueryResult<T = any> {
   rows: T[];
@@ -18,8 +18,8 @@ export async function initDatabase(): Promise<void> {
     connectionString: config.DATABASE_URL,
     max: 20,
     idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 5000,
-    ssl: config.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 10000,  // Increased timeout
+    ssl: { rejectUnauthorized: false },  // Always use SSL for Neon
   });
 
   pool.on('error', (err) => {

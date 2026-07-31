@@ -1,4 +1,4 @@
-import { query, getClient } from '../database';
+import { query, getClient } from '../database/index.js';
 import { ProvablyFairEngine, GameResult } from './provably-fair';
 import { randomBytes } from 'crypto';
 
