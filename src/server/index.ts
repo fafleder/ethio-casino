@@ -270,16 +270,17 @@ const miniAppPath = path.join(process.cwd(), 'dist/miniapp');
 const hasBuiltFiles = fs.existsSync(path.join(miniAppPath, 'index.html'));
 
 if (config.NODE_ENV === 'production' || hasBuiltFiles) {
-  // Static files only for GET requests
+  // Static files for GET requests - call next() if not found so catch-all works
   app.use((req, res, next) => {
     if (req.method === 'GET') {
-      express.static(miniAppPath)(req, res, () => {});
+      express.static(miniAppPath)(req, res, next);
     } else {
       // Allow POST/other methods to pass through
+      next();
     }
   });
   
-  // Catch-all for Mini App (must be after webhook and API routes)
+  // Catch-all for Mini App SPA routing (must be after webhook and API routes)
   app.get('*', (req, res) => {
     res.sendFile('index.html', { root: miniAppPath });
   });
