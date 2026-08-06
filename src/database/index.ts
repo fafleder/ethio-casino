@@ -47,7 +47,9 @@ function runSqliteQuery(text: string, params: any[] = []): QueryResult<any> {
     return '?';
   });
   
-  const isSelect = sqliteText.trim().toUpperCase().startsWith('SELECT');
+  // Check if query returns rows (SELECT or INSERT/UPDATE/DELETE with RETURNING)
+  const isReturning = sqliteText.trim().toUpperCase().includes('RETURNING');
+  const isSelect = sqliteText.trim().toUpperCase().startsWith('SELECT') || isReturning;
   
   if (isSelect) {
     const stmt = sqliteDb.prepare(sqliteText);
