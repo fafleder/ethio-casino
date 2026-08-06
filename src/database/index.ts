@@ -40,14 +40,21 @@ function initSqlite(): any {
 function runSqliteQuery(text: string, params: any[] = []): QueryResult<any> {
   if (!sqliteDb) initSqlite();
   
-  const isSelect = text.trim().toUpperCase().startsWith('SELECT');
+  // Convert PostgreSQL $1, $2 placeholders to SQLite ? placeholders
+  let paramIndex = 0;
+  const sqliteText = text.replace(/\$(\d+)/g, () => {
+    paramIndex++;
+    return '?';
+  });
+  
+  const isSelect = sqliteText.trim().toUpperCase().startsWith('SELECT');
   
   if (isSelect) {
-    const stmt = sqliteDb.prepare(text);
+    const stmt = sqliteDb.prepare(sqliteText);
     const rows = stmt.all(...params);
     return { rows, rowCount: rows.length, command: 'SELECT', oid: 0, fields: [] };
   } else {
-    const stmt = sqliteDb.prepare(text);
+    const stmt = sqliteDb.prepare(sqliteText);
     const result = stmt.run(...params);
     return { rows: [], rowCount: result.changes, command: 'EXECUTE', oid: result.lastInsertRowid, fields: [] };
   }
