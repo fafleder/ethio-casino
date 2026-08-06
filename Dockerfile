@@ -45,8 +45,8 @@ USER nodejs
 
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+# Health check - longer start period for DB initialization
+HEALTHCHECK --interval=10s --timeout=5s --start-period=60s --retries=10 \
   CMD curl -f http://localhost:3000/health || exit 1
 
 # Use dumb-init to handle signals properly
