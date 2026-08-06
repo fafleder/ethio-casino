@@ -303,7 +303,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 
 // Start server
 const PORT = config.PORT;
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 API Server running on port ${PORT}`);
   console.log(`🌍 Environment: ${config.NODE_ENV}`);
 });
