@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { Telegraf, Context, Markup, session } from 'telegraf';
 import { config } from '../config/index.js';
 import { gameService } from '../games/index.js';
-import { initSchema } from '../database/index.js';
+import { initSchema, initDatabase } from '../database/index.js';
 import { ProvablyFairEngine } from '../games/index.js';
 
 // Extend Telegraf Context
@@ -238,10 +238,13 @@ bot.catch((err, ctx) => {
 // Launch
 async function startBot() {
   try {
-    // Initialize database
-    await initSchema();
-    console.log('✅ Database initialized');
-
+    // Initialize database (non-blocking for healthcheck)
+    initDatabase().catch((err: Error) => console.error('DB init error:', err));
+    
+    // Don't wait for DB - start server immediately for healthcheck
+    // Bot will init DB in background
+    console.log('🚀 Starting server (DB init in background)...');
+    
     // Start bot
     if (config.NODE_ENV === 'production' && config.WEBAPP_URL) {
       // Webhook mode for production
@@ -253,7 +256,6 @@ async function startBot() {
         await bot.telegram.deleteWebhook({ drop_pending_updates: true });
         console.log('🗑️ Deleted existing webhook');
       } catch (err: any) {
-        // Ignore 404 if no webhook was set
         if (err.response?.error_code !== 404) throw err;
         console.log('🗑️ No webhook to delete');
       }
