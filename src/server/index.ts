@@ -262,12 +262,18 @@ app.post('/api/bonus/daily', authMiddleware, async (req, res) => {
   }
 });
 
-// Serve Mini App static files in production
-if (config.NODE_ENV === 'production') {
+// Serve Mini App static files (in production, or when built files exist)
+import * as fs from 'fs';
+import * as path from 'path';
+
+const miniAppPath = path.join(process.cwd(), 'dist/miniapp');
+const hasBuiltFiles = fs.existsSync(path.join(miniAppPath, 'index.html'));
+
+if (config.NODE_ENV === 'production' || hasBuiltFiles) {
   // Static files only for GET requests
   app.use((req, res, next) => {
     if (req.method === 'GET') {
-      express.static('dist/miniapp')(req, res, () => {});
+      express.static(miniAppPath)(req, res, () => {});
     } else {
       // Allow POST/other methods to pass through
     }
@@ -275,7 +281,17 @@ if (config.NODE_ENV === 'production') {
   
   // Catch-all for Mini App (must be after webhook and API routes)
   app.get('*', (req, res) => {
-    res.sendFile('index.html', { root: 'dist/miniapp' });
+    res.sendFile('index.html', { root: miniAppPath });
+  });
+} else {
+  // Development fallback - show API info
+  app.get('/', (req, res) => {
+    res.json({ 
+      message: 'Ethio Casino API Server',
+      status: 'running',
+      miniApp: 'Run `npm run build` to serve Mini App',
+      endpoints: ['/health', '/api/games', '/webhook']
+    });
   });
 }
 

@@ -40,9 +40,21 @@ function initSqlite(): any {
 function runSqliteQuery(text: string, params: any[] = []): QueryResult<any> {
   if (!sqliteDb) initSqlite();
   
-  // Convert PostgreSQL $1, $2 placeholders to SQLite ? placeholders
+  // Convert PostgreSQL ON CONFLICT ... RETURNING -> SQLite ON CONFLICT ... RETURNING FIRST
+  // SQLite uses 'excluded' table for upsert values
+  // Do this BEFORE parameter replacement so we can see $N placeholders
+  let sqliteText = text;
+  sqliteText = sqliteText.replace(/ON CONFLICT \(([^)]+)\) DO UPDATE SET([\s\S]*?)RETURNING \*/gi, (match: string, conflictCols: string, updateSet: string) => {
+    // Convert COALESCE($N, users.col) -> COALESCE(excluded.col, col)
+    let newUpdateSet = updateSet.replace(/COALESCE\(\$(\d+),\s*users\.(\w+)\)/gi, (_: string, num: string, col: string) => {
+      return `COALESCE(excluded.${col}, ${col})`;
+    });
+    return `ON CONFLICT(${conflictCols}) DO UPDATE SET${newUpdateSet} RETURNING *`;
+  });
+  
+  // NOW convert PostgreSQL $1, $2 placeholders to SQLite ? placeholders
   let paramIndex = 0;
-  const sqliteText = text.replace(/\$(\d+)/g, () => {
+  sqliteText = sqliteText.replace(/\$(\d+)/g, () => {
     paramIndex++;
     return '?';
   });
