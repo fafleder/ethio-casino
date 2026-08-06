@@ -245,34 +245,43 @@ async function startBot() {
     // Bot will init DB in background
     console.log('🚀 Starting server (DB init in background)...');
     
-    // Start bot
+    // Start bot (non-blocking - don't crash server if bot fails)
     if (config.NODE_ENV === 'production' && config.WEBAPP_URL) {
       // Webhook mode for production
-      await bot.telegram.setWebhook(`${config.WEBAPP_URL}/webhook`);
-      console.log('✅ Webhook set');
+      bot.telegram.setWebhook(`${config.WEBAPP_URL}/webhook`)
+        .then(() => console.log('✅ Webhook set'))
+        .catch(err => console.error('Webhook error:', err));
     } else {
       // Polling mode for development - delete any existing webhook first
-      try {
-        await bot.telegram.deleteWebhook({ drop_pending_updates: true });
-        console.log('🗑️ Deleted existing webhook');
-      } catch (err: any) {
-        if (err.response?.error_code !== 404) throw err;
-        console.log('🗑️ No webhook to delete');
-      }
-      await bot.launch();
-      console.log('✅ Bot started in polling mode');
+      bot.telegram.deleteWebhook({ drop_pending_updates: true })
+        .then(() => console.log('🗑️ Deleted existing webhook'))
+        .catch((err: any) => {
+          if (err.response?.error_code !== 404) console.error('Delete webhook error:', err);
+          else console.log('🗑️ No webhook to delete');
+        });
+      
+      // Launch bot but don't await - let it run in background
+      bot.launch()
+        .then(() => console.log('✅ Bot started in polling mode'))
+        .catch((err: any) => {
+          if (err.response?.error_code === 409) {
+            console.warn('⚠️ Bot polling conflict (another instance running) - server continues without bot');
+          } else {
+            console.error('Bot launch error:', err);
+          }
+        });
     }
 
     // Enable graceful stop
     process.once('SIGINT', () => bot.stop('SIGINT'));
     process.once('SIGTERM', () => bot.stop('SIGTERM'));
 
-    // Keep process alive
-    console.log('🤖 Bot is running... Press Ctrl+C to stop');
+    // Keep process alive - server runs regardless of bot status
+    console.log('🤖 Server running... Bot status logged above. Press Ctrl+C to stop');
     await new Promise(() => {}); // Never resolves - keeps process alive
 
   } catch (error) {
-    console.error('❌ Failed to start bot:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 }
