@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 15, 15, 26;
+  --background-end-rgb: 26, 26, 46;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+    to bottom,
+    rgb(var(--background-start-rgb)),
+    rgb(var(--background-end-rgb))
+  );
+  min-height: 100vh;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .gradient-gold {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .btn-primary {
+    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200
+           bg-gradient-to-r from-yellow-500 to-orange-500
+           hover:from-yellow-400 hover:to-orange-400
+           text-gray-900 shadow-lg shadow-yellow-500/25;
+  }
+  .btn-secondary {
+    @apply px-6 py-3 rounded-lg font-semibold transition-all duration-200
+           border-2 border-yellow-500 text-yellow-400
+           hover:bg-yellow-500/10;
+  }
+  .card-glass {
+    @apply bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl;
+  }
+}
