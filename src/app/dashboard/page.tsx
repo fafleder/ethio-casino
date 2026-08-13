@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase-client'
 import { useRouter } from 'next/navigation'
 import { SUBSCRIPTION_TIERS, type UserProfile } from '@/types/subscription'
 import Link from 'next/link'
+import { WalletCard } from '@/components/WalletCard'
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -133,7 +134,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="card-glass p-6">
+        <div className="card-glass p-6 mb-8">
           <h3 className="text-lg font-bold mb-4 gradient-gold">Quick Actions</h3>
           <div className="flex flex-wrap gap-4">
             <a href="https://t.me/ethioaugames_bot" target="_blank" className="btn-primary">
@@ -149,6 +150,9 @@ export default function DashboardPage() {
             </a>
           </div>
         </div>
+
+        {/* Wallet */}
+        <WalletCard />
       </div>
     </div>
   )
