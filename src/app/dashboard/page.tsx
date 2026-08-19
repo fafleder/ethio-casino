@@ -6,12 +6,17 @@ import { useRouter } from 'next/navigation'
 import { SUBSCRIPTION_TIERS, type UserProfile } from '@/types/subscription'
 import Link from 'next/link'
 import { WalletCard } from '@/components/WalletCard'
+import { ShiftForm } from '@/components/ShiftForm'
+import { BusinessReports } from '@/components/BusinessReports'
+
+type Tab = 'overview' | 'shifts' | 'reports' | 'wallet'
 
 export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<Tab>('overview')
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -56,11 +61,18 @@ export default function DashboardPage() {
   const tier = SUBSCRIPTION_TIERS[profile.subscription_tier]
   const isFree = profile.subscription_tier === 'free'
 
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: '📊' },
+    { id: 'shifts', label: 'Log Shift', icon: '🚗' },
+    { id: 'reports', label: 'Reports', icon: '📈' },
+    { id: 'wallet', label: 'Wallet', icon: '💰' },
+  ]
+
   return (
-    <div className="min-h-screen py-20 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen py-8 px-4">
+      <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-10">
+        <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2">
               <span className="text-2xl">🎰</span>
@@ -80,79 +92,84 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Subscription Card */}
-        <div className="card-glass p-8 mb-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-1">Current Plan: <span className="gradient-gold">{tier.name}</span></h2>
-              <p className="text-gray-400">{isFree ? 'Upgrade to unlock unlimited play and withdrawals' : 'Enjoy all your benefits!'}</p>
+        {/* Tab Navigation */}
+        <div className="flex gap-1 mb-6 border-b border-white/10 pb-1">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as Tab)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition ${
+                activeTab === tab.id
+                  ? 'bg-yellow-500 text-gray-900'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <span>{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* Subscription Card */}
+            <div className="card-glass p-6">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-1">Current Plan: <span className="gradient-gold">{tier.name}</span></h2>
+                  <p className="text-gray-400">{isFree ? 'Upgrade to unlock unlimited play and withdrawals' : 'Enjoy all your benefits!'}</p>
+                </div>
+                {isFree && (
+                  <div className="flex gap-4">
+                    <Link href="/checkout?tier=pro" className="btn-primary">Upgrade to Pro</Link>
+                    <Link href="/checkout?tier=vip" className="btn-secondary">Go VIP</Link>
+                  </div>
+                )}
+              </div>
             </div>
-            {isFree && (
-              <div className="flex gap-4">
-                <Link href="/checkout?tier=pro" className="btn-primary">Upgrade to Pro</Link>
-                <Link href="/checkout?tier=vip" className="btn-secondary">Go VIP</Link>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Benefits */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <div className="card-glass p-6">
-            <h3 className="text-lg font-bold mb-4 gradient-gold">Your Benefits</h3>
-            <ul className="space-y-2">
-              {tier.features.map((feature, i) => (
-                <li key={i} className="flex items-center gap-2 text-gray-300">
-                  <span className="text-yellow-400">✓</span>
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          </div>
+            {/* Quick Stats - placeholder until shifts exist */}
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div className="card-glass p-6 text-center">
+                <div className="text-3xl font-bold gradient-gold">—</div>
+                <div className="text-gray-500 text-sm">Today's Gross</div>
+              </div>
+              <div className="card-glass p-6 text-center">
+                <div className="text-3xl font-bold text-green-400">—</div>
+                <div className="text-gray-500 text-sm">Your Deposit</div>
+              </div>
+              <div className="card-glass p-6 text-center">
+                <div className="text-3xl font-bold text-yellow-400">—</div>
+                <div className="text-gray-500 text-sm">30-Day Avg Profit</div>
+              </div>
+            </div>
 
-          <div className="card-glass p-6">
-            <h3 className="text-lg font-bold mb-4 gradient-gold">Limits</h3>
-            <dl className="space-y-2 text-gray-300">
-              <div className="flex justify-between">
-                <dt>Daily Credits</dt>
-                <dd className="font-bold">{tier.limits.dailyCredits === -1 ? 'Unlimited' : tier.limits.dailyCredits}</dd>
+            {/* Quick Actions */}
+            <div className="card-glass p-6">
+              <h3 className="text-lg font-bold mb-4 gradient-gold">Quick Actions</h3>
+              <div className="flex flex-wrap gap-4">
+                <a href="https://t.me/ethioaugames_bot" target="_blank" className="btn-primary">
+                  🎮 Play Now on Telegram
+                </a>
+                {!isFree && (
+                  <a href="/api/billing/portal" className="btn-secondary">
+                    💳 Manage Billing
+                  </a>
+                )}
+                <a href="https://t.me/ethioaugames_support" target="_blank" className="btn-secondary">
+                  💬 Contact Support
+                </a>
               </div>
-              <div className="flex justify-between">
-                <dt>Max Bet</dt>
-                <dd className="font-bold">${tier.limits.maxBet}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>Withdrawals</dt>
-                <dd className="font-bold">{tier.limits.withdrawals ? 'Enabled' : 'Disabled'}</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt>Cashback</dt>
-                <dd className="font-bold text-yellow-400">{tier.limits.cashback}%</dd>
-              </div>
-            </dl>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Quick Actions */}
-        <div className="card-glass p-6 mb-8">
-          <h3 className="text-lg font-bold mb-4 gradient-gold">Quick Actions</h3>
-          <div className="flex flex-wrap gap-4">
-            <a href="https://t.me/ethioaugames_bot" target="_blank" className="btn-primary">
-              🎮 Play Now on Telegram
-            </a>
-            {!isFree && (
-              <a href="/api/billing/portal" className="btn-secondary">
-                💳 Manage Billing
-              </a>
-            )}
-            <a href="https://t.me/ethioaugames_support" target="_blank" className="btn-secondary">
-              💬 Contact Support
-            </a>
-          </div>
-        </div>
+        {activeTab === 'shifts' && <ShiftForm />}
 
-        {/* Wallet */}
-        <WalletCard />
+        {activeTab === 'reports' && <BusinessReports />}
+
+        {activeTab === 'wallet' && <WalletCard />}
       </div>
     </div>
   )
