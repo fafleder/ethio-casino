@@ -1,24 +1,29 @@
 // Cloudflare Worker for Ethio Casino Telegram Bot
 // Deploys to Cloudflare Workers free tier (100K requests/day)
 
-import { Bot, Context, session, SessionFlavor } from "telegraf";
+import { Telegraf, session, Scenes, Markup, Context } from "telegraf";
 import { ProvablyFairEngine } from "./games/provably-fair";
 import { gameService } from "./games/game-service";
 import { config } from "./config";
 
 // Extend Telegraf context with session
-interface SessionData {
-  userId?: number;
-  step?: string;
-  data?: Record<string, unknown>;
-}
-type MyContext = Context & SessionFlavor<SessionData>;
+const bot = new Telegraf(config.BOT_TOKEN);
+bot.use(session());
 
-// Bot instance
-const bot = new MyContext(config.BOT_TOKEN);
+// Type definitions (JSDoc for type checking)
+/**
+ * @typedef {Object} SessionData
+ * @property {number} [userId]
+ * @property {string} [step]
+ * @property {Object} [data]
+ */
+
+/**
+ * @typedef {Context & {session: SessionData}} MyContext
+ */
 
 // Middleware for Mini App initData validation
-function validateInitData(initData: string): { valid: boolean; user?: any } {
+async function validateInitData(initData) {
   try {
     const params = new URLSearchParams(initData);
     const hash = params.get('hash');
@@ -47,7 +52,11 @@ function validateInitData(initData: string): { valid: boolean; user?: any } {
     const secret = await crypto.subtle.sign('HMAC', secretKey, encoder.encode(config.BOT_TOKEN));
     const calculatedHash = await crypto.subtle.sign('HMAC', botTokenKey, encoder.encode(dataCheckString));
 
-    if (bytesToHex(new Uint8Array(calculatedHash)) !== hash) {
+    function bytesToHex(bytes) {
+      return Array.from(new Uint8Array(bytes)).map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    if (bytesToHex(calculatedHash) !== hash) {
       return { valid: false };
     }
 
@@ -67,13 +76,9 @@ function validateInitData(initData: string): { valid: boolean; user?: any } {
   }
 }
 
-function bytesToHex(bytes: Uint8Array): string {
-  return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 // Webhook handler
 export default {
-  async fetch(request: Request, env: any, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request, env, ctx) {
     // Set config from environment
     config.BOT_TOKEN = env.BOT_TOKEN;
     config.NODE_ENV = env.NODE_ENV || 'production';
@@ -152,7 +157,7 @@ export default {
         const offset = parseInt(urlParams.get('offset') || '0');
         const gameId = urlParams.get('game');
         const type = urlParams.get('type');
-        const history = await gameService.getUserHistory(user.id, limit, offset, gameId, type);
+        const history = await gameService.getGameHistory(user.id, limit, offset, gameId, type);
         return new Response(JSON.stringify({ history }), {
           headers: { 'Content-Type': 'application/json' },
         });
@@ -235,7 +240,7 @@ export default {
 };
 
 // Bot command handlers
-bot.command('start', async (ctx: MyContext) => {
+bot.command('start', async (ctx) => {
   const user = ctx.from;
   if (!user) return;
 
@@ -259,14 +264,14 @@ bot.command('start', async (ctx: MyContext) => {
   );
 });
 
-bot.command('balance', async (ctx: MyContext) => {
+bot.command('balance', async (ctx) => {
   const user = ctx.from;
   if (!user) return;
   const balance = await gameService.getUserBalance(user.id);
   await ctx.reply(`💰 Your balance: ${balance} ETB`);
 });
 
-bot.command('leaderboard', async (ctx: MyContext) => {
+bot.command('leaderboard', async (ctx) => {
   const leaderboard = await gameService.getLeaderboard(10);
   let msg = '🏆 Leaderboard:\n\n';
   leaderboard.forEach((entry, i) => {
@@ -275,13 +280,13 @@ bot.command('leaderboard', async (ctx: MyContext) => {
   await ctx.reply(msg);
 });
 
-bot.command('daily', async (ctx: MyContext) => {
+bot.command('daily', async (ctx) => {
   const user = ctx.from;
   if (!user) return;
   try {
     const result = await gameService.claimDailyBonus(user.id);
     await ctx.reply(`🎁 Daily bonus claimed! +${result.bonus} ETB\nNew balance: ${result.newBalance} ETB`);
-  } catch (error: any) {
+  } catch (error) {
     await ctx.reply(error.message || 'Failed to claim bonus');
   }
 });
