@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Deposit Tracker Pro</title>
+<style>
+:root{--bg:#0f0f1a;--card:#1a1a2e;--accent:#00d4aa;--text:#eaeaea;--muted:#888;--red:#ff4757;--yellow:#ffa502;--green:#2ed573;--blue:#1e90ff;--radius:16px;--shadow:0 8px 32px #00000080}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:16px 20px;text-align:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #00d4aa22}
+h1{font-size:1.3rem;font-weight:700}
+.subtitle{font-size:0.75rem;color:var(--muted);margin-top:2px}
+main{flex:1;padding:16px 12px 100px;display:grid;gap:12px;max-width:480px;margin:0 auto;width:100%}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);border:1px solid #00d4aa11}
+.card h2{font-size:0.85rem;font-weight:600;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.row{display:flex;gap:8px;margin-bottom:10px}
+.row.single > *{flex:1}
+.input-wrap{flex:1;display:flex;flex-direction:column;gap:4px}
+label{font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+input,select{background:#0d0d1a;border:1px solid #00d4aa22;color:var(--text);padding:14px 14px;border-radius:10px;font-size:1.1rem;outline:none}
+input:focus{border-color:var(--accent)}
+input[type="number"]{text-align:right}
+input[readonly]{background:#0d0d1a;color:var(--accent)}
+.btn{flex:1;background:linear-gradient(135deg,var(--accent) 0%,#00b894 100%);color:#0a0a0a;border:none;padding:16px;border-radius:10px;font-size:1rem;font-weight:700}
+.btn.secondary{background:linear-gradient(135deg,#2d2d44 0%,#1a1a2e 100%);color:var(--accent);border:1px solid var(--accent)}
+.btn.blue{background:linear-gradient(135deg,var(--blue) 0%,#0066cc 100%);color:#fff}
+.big-num{font-size:2.5rem;font-weight:800;color:var(--accent);text-align:center}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:#0d0d1a;border-radius:10px;padding:12px;text-align:center;border:1px solid #00d4aa11}
+.stat .label{font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.stat .val{font-size:1.2rem;font-weight:700}
+.stat .val.green{color:var(--green)}
+.stat .val.red{color:var(--red)}
+.stat .val.yellow{color:var(--yellow)}
+.progress-bar{height:6px;background:#0d0d1a;border-radius:3px;margin:12px 0;overflow:hidden}
+.progress-bar>div{height:100%;background:linear-gradient(90deg,var(--red),var(--yellow),var(--green));transition:width 0.3s}
+.history-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #00d4aa11}
+.history-item:last-child{border-bottom:none}
+.history-date{font-size:0.85rem;font-weight:600}
+.history-vals{display:flex;gap:16px;text-align:right}
+.history-val .num{font-size:1.1rem;font-weight:700}
+.history-val .label{font-size:0.6rem;color:var(--muted);text-transform:uppercase}
+.empty{text-align:center;color:var(--muted);padding:20px}
+.tabs{display:flex;gap:6px;margin-bottom:12px;background:#0d0d1a;border-radius:10px;padding:4px}
+.tab{flex:1;background:none;border:none;color:var(--muted);padding:10px;font-size:0.75rem;font-weight:600;border-radius:8px;cursor:pointer}
+.tab.active{background:var(--accent);color:#0a0a0a}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+@media (max-width:380px){.stat-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+<h1>💰 Deposit Tracker</h1>
+<div class="subtitle">Daily • Weekly • Monthly</div>
+</header>
+<main>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('today')">Today</button>
+    <button class="tab" onclick="showTab('week')">Week</button>
+    <button class="tab" onclick="showTab('month')">Month</button>
+    <button class="tab" onclick="showTab('settings')">Settings</button>
+  </div>
+
+  <!-- TODAY -->
+  <div class="tab-panel active" id="panel-today">
+    <div class="card">
+      <h2>Enter Deposits</h2>
+      <div class="input-wrap" style="margin-bottom:12px">
+        <label>Date</label>
+        <input type="date" id="entryDate">
+      </div>
+      <div class="row single">
+        <div class="input-wrap"><label>Morning Deposit (Br)</label><input type="number" step="10" min="0" placeholder="e.g. 3100" inputmode="numeric" id="amDeposit" oninput="calcTotal()" onchange="calcTotal()"></div>
+        <div class="input-wrap"><label>Evening Deposit (Br)</label><input type="number" step="10" min="0" placeholder="e.g. 2100" inputmode="numeric" id="pmDeposit" oninput="calcTotal()" onchange="calcTotal()"></div>
+      </div>
+      <div style="margin-top:8px"><label>Combined</label><div class="big-num" id="totalDeposit">0 Br</div></div>
+      <button class="btn" onclick="saveEntry()" style="margin-top:12px;width:100%">💾 Save</button>
+    </div>
+
+    <div class="card">
+      <h2 id="todayDate">Today's Total</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="label">Morning</div><div class="val" id="todayAM">0 Br</div></div>
+        <div class="stat"><div class="label">Evening</div><div class="val" id="todayPM">0 Br</div></div>
+        <div class="stat"><div class="label">Target</div><div class="val">7,250 Br</div></div>
+        <div class="stat"><div class="label">True Profit</div><div class="val" id="todayProfit">0 Br</div></div>
+      </div>
+      <div class="progress-bar"><div id="progressToday" style="width:0%"></div></div>
+      <div style="font-size:.7rem;color:var(--muted);text-align:center" id="progressTextToday">Gross 0% Profit 0%</div>
+    </div>
+  </div>
+
+  <!-- WEEK -->
+  <div class="tab-panel" id="panel-week">
+    <div class="card">
+      <h2 id="weekRange">Week</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="label">Gross Deposits</div><div class="val" id="wGross">0 Br</div></div>
+        <div class="stat"><div class="label">Target</div><div class="val">41,872 Br</div></div>
+        <div class="stat"><div class="label">Rental + Reserve</div><div class="val" id="wFixed">0 Br</div></div>
+        <div class="stat"><div class="label">True Profit</div><div class="val" id="wProfit">0 Br</div></div>
+      </div>
+      <div class="progress-bar"><div id="wProgress" style="width:0%"></div></div>
+      <div style="font-size:.7rem;color:var(--muted);text-align:center" id="wProgressText">0/7 days</div>
+    </div>
+    <div class="card"><h2>Daily Breakdown</h2><div id="weekList"></div></div>
+  </div>
+
+  <!-- MONTH -->
+  <div class="tab-panel" id="panel-month">
+    <div class="card">
+      <h2 id="monthTitle">Month</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="label">Gross Deposits</div><div class="val" id="mGross">0 Br</div></div>
+        <div class="stat"><div class="label">Target</div><div class="val">179,450 Br</div></div>
+        <div class="stat"><div class="label">Rental + Reserve</div><div class="val" id="mFixed">0 Br</div></div>
+        <div class="stat"><div class="label">True Profit</div><div class="val" id="mProfit">0 Br</div></div>
+      </div>
+      <div class="progress-bar"><div id="mProgress" style="width:0%"></div></div>
+      <div style="font-size:.7rem;color:var(--muted);text-align:center" id="mProgressText">0 days</div>
+    </div>
+    <div class="card"><h2>Daily Breakdown</h2><div id="monthList"></div></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="tab-panel" id="panel-settings">
+    <div class="card">
+      <h2>⚙️ Business Settings</h2>
+      <div class="row single">
+        <div class="input-wrap"><label>Daily Rental (Br)</label><input type="number" step="10" id="setRental" oninput="saveSettings()"></div>
+        <div class="input-wrap"><label>Daily Misc (Br)</label><input type="number" step="10" id="setMisc" oninput="saveSettings()"></div>
+      </div>
+      <div class="row single">
+        <div class="input-wrap"><label>Daily Maintenance Reserve (Br)</label><input type="number" step="10" id="setMaint" oninput="saveSettings()"></div>
+      </div>
+      <div class="row single">
+        <div class="input-wrap"><label>Daily Gross Target (Br)</label><input type="number" step="10" id="setTargetDaily" oninput="saveSettings()"></div>
+        <div class="input-wrap"><label>Daily Profit Target (Br)</label><input type="number" step="10" id="setProfitDaily" oninput="saveSettings()"></div>
+      </div>
+      <button class="btn secondary" onclick="saveSettingsClick()" style="margin-top:12px;width:100%">Save Settings</button>
+    </div>
+    <div class="card">
+      <h2>📤 Backup & Restore</h2>
+      <div class="row"><button class="btn" onclick="exportData()">Export JSON</button><button class="btn secondary" onclick="document.getElementById('importFile').click()">Import JSON</button></div>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      <div style="margin-top:8px;font-size:.7rem;color:var(--muted);text-align:center">Stored in localStorage + JSON backup</div>
+    </div>
+  </div>
+</main>
+
+<script>
+const KEY='depositTrackerPro';
+const DEFAULTS={
+  DAILY_RENTAL:1400,
+  DAILY_MISC:200,
+  DAILY_MAINT_RESERVE:500,
+  TARGET_GROSS_DAILY:7250,
+  TARGET_PROFIT_DAILY:2232,
+  TARGET_GROSS_WEEKLY:41872,
+  TARGET_PROFIT_WEEKLY:15622,
+  TARGET_GROSS_MONTHLY:179450,
+  TARGET_PROFIT_MONTHLY:66950
+};
+let data={}, settings={...DEFAULTS};
+
+function $(id){return document.getElementById(id);}
+const fmt=n=>Math.round(n).toLocaleString();
+const todayISO=()=>new Date().toISOString().split('T')[0];
+const weekISO=()=>{const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1);return new Date(d.setDate(diff)).toISOString().split('T')[0];};
+const monthISO=()=>new Date().toISOString().slice(0,7);
+const dayKey=d=>d;
+
+function load(){
+  try{const r=localStorage.getItem(KEY);if(r){const p=JSON.parse(r);data=p.data||{};settings={...DEFAULTS,...(p.settings||{})};}}catch(e){}
+  applySettingsUI();
+  $('entryDate').value=todayISO();
+  refreshAll();
+}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify({data,settings}));}catch(e){}
+}
+function applySettingsUI(){
+  $('setRental').value=settings.DAILY_RENTAL;
+  $('setMisc').value=settings.DAILY_MISC;
+  $('setMaint').value=settings.DAILY_MAINT_RESERVE;
+  $('setTargetDaily').value=settings.TARGET_GROSS_DAILY;
+  $('setProfitDaily').value=settings.TARGET_PROFIT_DAILY;
+}
+function saveSettings(){
+  settings.DAILY_RENTAL=parseInt($('setRental').value)||DEFAULTS.DAILY_RENTAL;
+  settings.DAILY_MISC=parseInt($('setMisc').value)||DEFAULTS.DAILY_MISC;
+  settings.DAILY_MAINT_RESERVE=parseInt($('setMaint').value)||DEFAULTS.DAILY_MAINT_RESERVE;
+  settings.TARGET_GROSS_DAILY=parseInt($('setTargetDaily').value)||DEFAULTS.TARGET_GROSS_DAILY;
+  settings.TARGET_PROFIT_DAILY=parseInt($('setProfitDaily').value)||DEFAULTS.TARGET_PROFIT_DAILY;
+  settings.TARGET_GROSS_WEEKLY=settings.TARGET_GROSS_DAILY*5.77; // approx
+  settings.TARGET_PROFIT_WEEKLY=settings.TARGET_PROFIT_DAILY*7;
+  settings.TARGET_GROSS_MONTHLY=settings.TARGET_GROSS_DAILY*30;
+  settings.TARGET_PROFIT_MONTHLY=settings.TARGET_PROFIT_DAILY*30;
+  save(); refreshAll();
+}
+function saveSettingsClick(){saveSettings();alert('Settings saved');}
+
+function showTab(t){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  event.target.classList.add('active');
+  $('panel-'+t).classList.add('active');
+}
+
+function calcTotal(){
+  const am=parseInt($('amDeposit').value)||0;
+  const pm=parseInt($('pmDeposit').value)||0;
+  $('totalDeposit').textContent=fmt(am+pm)+' Br';
+}
+
+function saveEntry(){
+  const date=$('entryDate').value;
+  if(!date){alert('Pick a date');return;}
+  const am=parseInt($('amDeposit').value)||0;
+  const pm=parseInt($('pmDeposit').value)||0;
+  if(!am && !pm){alert('Enter at least one deposit');return;}
+  data[date]={am,pm,total:am+pm,ts:Date.now()};
+  save();
+  $('amDeposit').value='';$('pmDeposit').value='';calcTotal();
+  refreshAll();
+  alert('Saved: '+fmt(am+pm)+' Br on '+date);
+}
+
+function getEntry(d){return data[d]||{am:0,pm:0,total:0};}
+function getWeekEntries(wk){
+  const out=[];for(let i=0;i<7;i++){const d=new Date(wk);d.setDate(d.getDate()+i);const k=d.toISOString().split('T')[0];if(data[k])out.push({date:k,...data[k]});}
+  return out;
+}
+function getMonthEntries(mk){
+  const out=[];const[y,m]=mk.split('-').map(Number);const days=new Date(y,m,0).getDate();
+  for(let d=1;d<=days;d++){const k=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');if(data[k])out.push({date:k,...data[k]});}
+  return out;
+}
+function sumEntries(arr){
+  let g=0,am=0,pm=0,d=0;
+  for(const e of arr){if(e.total){d++;g+=e.total;am+=e.am||0;pm+=e.pm||0;}}
+  const fixed=d*(settings.DAILY_RENTAL+settings.DAILY_MISC+settings.DAILY_MAINT_RESERVE);
+  const profit=g-fixed;
+  return {gross:g,am,pm,fixed,profit,days:d};
+}
+
+function refreshAll(){refreshToday();refreshWeek();refreshMonth();}
+
+function refreshToday(){
+  const today=todayISO(),e=getEntry(today);
+  $('todayAM').textContent=fmt(e.am)+' Br';
+  $('todayPM').textContent=fmt(e.pm)+' Br';
+  const fixed=settings.DAILY_RENTAL+settings.DAILY_MISC+settings.DAILY_MAINT_RESERVE;
+  const profit=e.total-fixed;
+  $('todayProfit').textContent=fmt(profit)+' Br';
+  $('todayProfit').className='val '+(profit<0?'red':profit<1000?'yellow':'green');
+  const gpct=Math.min(100,(e.total/settings.TARGET_GROSS_DAILY)*100);
+  const ppct=Math.min(100,Math.max(0,(profit/settings.TARGET_PROFIT_DAILY)*100));
+  $('progressToday').style.width=gpct+'%';
+  $('progressTextToday').textContent='Gross '+gpct.toFixed(0)+'% Profit '+ppct.toFixed(0)+'%';
+  $('todayDate').textContent='Today: '+new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+}
+
+function refreshWeek(){
+  const wk=weekISO(),ws=new Date(wk),we=new Date(ws);we.setDate(we.getDate()+6);
+  const es=getWeekEntries(wk),{gross,am,pm,fixed,profit,days}=sumEntries(es);
+  const gpct=Math.min(100,(gross/settings.TARGET_GROSS_WEEKLY)*100);
+  const ppct=days?Math.min(100,Math.max(0,(profit/settings.TARGET_PROFIT_WEEKLY)*100)):0;
+  $('wGross').textContent=fmt(gross)+' Br';
+  $('wFixed').textContent=fmt(fixed)+' Br';
+  $('wProfit').textContent=fmt(profit)+' Br';
+  $('wProfit').className='val '+(profit<0?'red':profit<5000?'yellow':'green');
+  $('wProgress').style.width=gpct+'%';
+  $('wProgressText').textContent=days+'/7 days';
+  $('weekRange').textContent='Week '+ws.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' to '+we.toLocaleDateString(undefined,{day:'numeric'});
+  let h='';
+  if(es.length){
+    for(const e of es){
+      const f=settings.DAILY_RENTAL+settings.DAILY_MISC+settings.DAILY_MAINT_RESERVE;
+      const p=e.total-f;
+      const ds=new Date(e.date).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+      h+='<div class="history-item"><span class="history-date">'+ds+'</span><div class="history-vals"><div class="history-val"><div class="num">'+fmt(e.am)+'</div><div class="label">AM</div></div><div class="history-val"><div class="num">'+fmt(e.pm)+'</div><div class="label">PM</div></div><div class="history-val"><div class="num '+(p<0?'red':p<1000?'yellow':'green')+'">'+fmt(e.total)+'</div><div class="label">Total</div></div><div class="history-val"><div class="num '+(p<0?'red':'green')+'">'+fmt(p)+'</div><div class="label">Profit</div></div></div></div>';
+    }
+  }else h='<div class="empty">No entries this week</div>';
+  $('weekList').innerHTML=h;
+}
+
+function refreshMonth(){
+  const mk=monthISO(),es=getMonthEntries(mk),{gross,am,pm,fixed,profit,days}=sumEntries(es);
+  const gpct=Math.min(100,(gross/settings.TARGET_GROSS_MONTHLY)*100);
+  const ppct=days?Math.min(100,Math.max(0,(profit/settings.TARGET_PROFIT_MONTHLY)*100)):0;
+  $('mGross').textContent=fmt(gross);
+  $('mFixed').textContent=fmt(fixed);
+  $('mProfit').textContent=fmt(profit);
+  $('mProfit').className='val '+(profit<0?'red':profit<20000?'yellow':'green');
+  $('mProgress').style.width=gpct+'%';
+  $('mProgressText').textContent=days+' days';
+  $('monthTitle').textContent=new Date(mk+'-01').toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  let h='';
+  if(es.length){
+    for(const e of es){
+      const f=settings.DAILY_RENTAL+settings.DAILY_MISC+settings.DAILY_MAINT_RESERVE;
+      const p=e.total-f;
+      const ds=new Date(e.date).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+      h+='<div class="history-item"><span class="history-date">'+ds+'</span><div class="history-vals"><div class="history-val"><div class="num">'+fmt(e.am)+'</div><div class="label">AM</div></div><div class="history-val"><div class="num">'+fmt(e.pm)+'</div><div class="label">PM</div></div><div class="history-val"><div class="num '+(p<0?'red':p<1000?'yellow':'green')+'">'+fmt(e.total)+'</div><div class="label">Total</div></div><div class="history-val"><div class="num '+(p<0?'red':'green')+'">'+fmt(p)+'</div><div class="label">Profit</div></div></div></div>';
+    }
+  }else h='<div class="empty">No entries this month</div>';
+  $('monthList').innerHTML=h;
+}
+
+function exportData(){
+  const blob=new Blob([JSON.stringify({data,settings},null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='deposits-'+todayISO()+'.json';a.click();URL.revokeObjectURL(url);alert('Exported');
+}
+function importData(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);data=p.data||{};settings={...DEFAULTS,...(p.settings||{})};save();applySettingsUI();refreshAll();alert('Imported');}catch(e){alert('Failed '+e);}};r.readAsText(f);
+}
+
+load();
+</script>
+</body>
+</html>

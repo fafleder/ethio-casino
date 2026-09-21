@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Vitz Tracker</title>
+<style>
+:root{--bg:#0f0f1a;--card:#1a1a2e;--accent:#00d4aa;--text:#eaeaea;--muted:#888;--red:#ff4757;--yellow:#ffa502;--green:#2ed573;--blue:#1e90ff;--radius:16px;--shadow:0 8px 32px #00000080}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:16px 20px;text-align:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #00d4aa22}
+h1{font-size:1.3rem;font-weight:700}
+.subtitle{font-size:0.75rem;color:var(--muted);margin-top:2px}
+main{flex:1;padding:16px 12px 100px;display:grid;gap:12px;max-width:480px;margin:0 auto;width:100%}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);border:1px solid #00d4aa11}
+.card h2{font-size:0.85rem;font-weight:600;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.row{display:flex;gap:8px;margin-bottom:10px}
+.row.single > *{flex:1}
+.input-wrap{flex:1;display:flex;flex-direction:column;gap:4px}
+label{font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+input,select{background:#0d0d1a;border:1px solid #00d4aa22;color:var(--text);padding:14px 14px;border-radius:10px;font-size:1.1rem;outline:none}
+input:focus{background:#0d0d1a;border-color:var(--accent);color:var(--text)}
+input[type="number"]{text-align:right}
+input[readonly]{background:#0d0d1a;color:var(--accent)}
+.btn{flex:1;background:linear-gradient(135deg,var(--accent) 0%,#00b894 100%);color:#0a0a0a;border:none;padding:16px;border-radius:10px;font-size:1rem;font-weight:700}
+.btn.secondary{background:linear-gradient(135deg,#2d2d44 0%,#1a1a2e 100%);color:var(--accent);border:1px solid var(--accent)}
+.btn.blue{background:linear-gradient(135deg,var(--blue) 0%,#0066cc 100%);color:#fff}
+.big-num{font-size:2rem;font-weight:800;color:var(--accent)}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:#0d0d1a;border-radius:10px;padding:12px;text-align:center;border:1px solid #00d4aa11}
+.stat .label{font-size:0.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.stat .val{font-size:1.1rem;font-weight:700}
+.stat .val.green{color:var(--green)}.stat .val.red{color:var(--red)}.stat .val.yellow{color:var(--yellow)}
+.progress-bar{height:6px;background:#0d0d1a;border-radius:3px;margin:12px 0;overflow:hidden}
+.progress-bar>div{height:100%;background:linear-gradient(90deg,var(--red),var(--yellow),var(--green));transition:width 0.3s}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.tabs{display:flex;gap:6px;margin-bottom:12px;background:#0d0d1a;border-radius:10px;padding:4px}
+.tab{flex:1;background:none;border:none;color:var(--muted);padding:10px;font-size:0.8rem;font-weight:600;border-radius:8px}
+.tab.active{background:var(--accent);color:#0a0a0a}
+.debug-box{background:#000;color:#0f0;padding:8px;margin:8px;border-radius:8px;font-family:monospace;font-size:0.65rem;max-height:120px;overflow:auto;white-space:pre-wrap}
+@media (max-width:380px){.stat-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>Vitz Tracker</h1><div class="subtitle">Daily • Weekly • Monthly</div></header>
+<main>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('today')">Today</button>
+    <button class="tab" onclick="showTab('week')">Week</button>
+    <button class="tab" onclick="showTab('month')">Month</button>
+  </div>
+
+  <div class="tab-panel active" id="panel-today">
+    <div class="card"><h2 id="todayDate">Today</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="label">Gross Rides</div><div class="val" id="statGross">0 Br</div></div>
+        <div class="stat"><div class="label">Target</div><div class="val">7,250 Br</div></div>
+        <div class="stat"><div class="label">Fuel Cost</div><div class="val" id="statFuel">0 Br</div></div>
+        <div class="stat"><div class="label">True Profit</div><div class="val" id="statProfit">0 Br</div></div>
+      </div>
+      <div class="progress-bar"><div id="progressGross" style="width:0%"></div></div>
+      <div style="font-size:.7rem;color:var(--muted);text-align:center" id="progressText">Gross 0% Profit 0%</div>
+    </div>
+
+    <div class="card"><h2>🌅 Morning (Friend) <span style="font-size:.7rem;color:var(--muted);margin-left:8px">8AM-4PM</span></h2>
+      <div class="row single">
+        <div class="input-wrap"><label>Gross (Br)</label><input type="number" step="10" min="0" placeholder="e.g. 4300" inputmode="numeric" id="amGross" oninput="saveShift('am')" onchange="saveShift('am')"></div>
+        <div class="input-wrap"><label>KM</label><input type="number" step="1" min="0" placeholder="e.g. 110" inputmode="numeric" id="amKm" oninput="saveShift('am')" onchange="saveShift('am')"></div>
+      </div>
+      <div class="row single">
+        <div class="input-wrap"><label>Misc (Br)</label><input type="number" step="10" min="0" placeholder="100" inputmode="numeric" id="amMisc" oninput="saveShift('am')" onchange="saveShift('am')"></div>
+        <div class="input-wrap"><label>Fuel (auto)</label><input type="text" readonly id="amFuel"></div>
+      </div>
+      <div id="amDeposit" style="display:none;margin-top:8px;padding:10px;background:#0d0d1a;border-radius:8px;display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:.8rem">💰 Deposit</span><span class="big-num" id="amDepositVal">0 Br</span></div>
+    </div>
+
+    <div class="card"><h2>🌙 Evening (You) <span style="font-size:.7rem;color:var(--muted);margin-left:8px">4:30PM-9:30PM</span></h2>
+      <div class="row single">
+        <div class="input-wrap"><label>Gross (Br)</label><input type="number" step="10" min="0" placeholder="e.g. 2950" inputmode="numeric" id="pmGross" oninput="saveShift('pm')" onchange="saveShift('pm')"></div>
+        <div class="input-wrap"><label>KM</label><input type="number" step="1" min="0" placeholder="e.g. 75" inputmode="numeric" id="pmKm" oninput="saveShift('pm')" onchange="saveShift('pm')"></div>
+      </div>
+      <div class="row single">
+        <div class="input-wrap"><label>Misc (Br)</label><input type="number" step="10" min="0" placeholder="100" inputmode="numeric" id="pmMisc" oninput="saveShift('pm')" onchange="saveShift('pm')"></div>
+        <div class="input-wrap"><label>Fuel (auto)</label><input type="text" readonly id="pmFuel"></div>
+      </div>
+      <div id="pmDeposit" style="display:none;margin-top:8px;padding:10px;background:#0d0d1a;border-radius:8px;display:flex;justify-content:space-between"><span style="color:var(--muted);font-size:.8rem">💰 Deposit</span><span class="big-num" id="pmDepositVal">0 Br</span></div>
+    </div>
+
+    <div class="card"><h2>💾 Backup</h2>
+      <div class="row"><button class="btn blue" onclick="exportData()">📤 Export</button><button class="btn secondary" onclick="document.getElementById('importFile').click()">📥 Import</button></div>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      <div style="margin-top:8px;font-size:.7rem;color:var(--muted);text-align:center">Saves to localStorage + JSON file</div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="panel-week">
+    <div class="card"><h2 id="weekRange">Week</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="label">Gross Rides</div><div class="val" id="wGross">0 Br</div></div>
+        <div class="stat"><div class="label">Target</div><div class="val">41,872 Br</div></div>
+        <div class="stat"><div class="label">Fuel Cost</div><div class="val" id="wFuel">0 Br</div></div>
+        <div class="stat"><div class="label">True Profit</div><div class="val" id="wProfit">0 Br</div></div>
+      </div>
+      <div class="progress-bar"><div id="wProgress" style="width:0%"></div></div>
+      <div style="font-size:.7rem;color:var(--muted);text-align:center" id="wProgressText">0/7 days</div>
+    </div>
+    <div class="card"><h2>Daily Breakdown</h2><div id="weekList"></div></div>
+  </div>
+
+  <div class="tab-panel" id="panel-month">
+    <div class="card"><h2 id="monthTitle">Month</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="label">Gross Rides</div><div class="val" id="mGross">0 Br</div></div>
+        <div class="stat"><div class="label">Target</div><div class="val">179,450 Br</div></div>
+        <div class="stat"><div class="label">Fuel Cost</div><div class="val" id="mFuel">0 Br</div></div>
+        <div class="stat"><div class="label">True Profit</div><div class="val" id="mProfit">0 Br</div></div>
+      </div>
+      <div class="progress-bar"><div id="mProgress" style="width:0%"></div></div>
+      <div style="font-size:.7rem;color:var(--muted);text-align:center" id="mProgressText">0 days</div>
+    </div>
+    <div class="card"><h2>Daily Breakdown</h2><div id="monthList"></div></div>
+    <div class="card"><h2>⚙️ Settings</h2>
+      <div class="row single"><div class="input-wrap"><label>Petrol (Br/L)</label><input type="number" step="0.01" id="setPetrol" oninput="saveSettings()"></div><div class="input-wrap"><label>L/100km</label><input type="number" step="0.1" id="setConsumption" oninput="saveSettings()"></div></div>
+      <div class="row single"><div class="input-wrap"><label>Daily Rental</label><input type="number" step="10" id="setRental" oninput="saveSettings()"></div><div class="input-wrap"><label>Daily Misc</label><input type="number" step="10" id="setMisc" oninput="saveSettings()"></div></div>
+      <div class="row single"><div class="input-wrap"><label>Daily Maint Reserve</label><input type="number" step="10" id="setMaint" oninput="saveSettings()"></div></div>
+      <button class="btn secondary" onclick="saveSettingsClick()" style="margin-top:12px;width:100%">Save Settings</button>
+    </div>
+  </div>
+
+  <div class="debug-box" id="debugBox">Ready. Type in a field → press Enter/Go → watch here.</div>
+</main>
+
+<script>
+const CONFIG = { PETROL_PRICE:167.50, VITZ_L_PER_100KM:6.5, DAILY_RENTAL:1400, DAILY_MISC:200, DAILY_MAINT_RESERVE:500, TARGET_GROSS_DAILY:7250, TARGET_PROFIT_DAILY:2232, TARGET_GROSS_WEEKLY:41872, TARGET_PROFIT_WEEKLY:15622, TARGET_GROSS_MONTHLY:179450, TARGET_PROFIT_MONTHLY:66950, SHIFTS:[{id:'am'},{id:'pm'}] };
+const KEY='vitzTrackerData';
+let state={entries:{}, settings:{...CONFIG}};
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.round(n).toLocaleString();
+const calcFuel=km=>(km*state.settings.VITZ_L_PER_100KM/100)*state.settings.PETROL_PRICE;
+const calcProfit=(g,f,m)=>g-f-m-state.settings.DAILY_RENTAL-state.settings.DAILY_MAINT_RESERVE;
+const todayKey=()=>new Date().toISOString().split('T')[0];
+const weekKey=()=>{const d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1);return new Date(d.setDate(diff)).toISOString().split('T')[0];};
+const monthKey=()=>new Date().toISOString().slice(0,7);
+const getEntry=k=>state.entries[k]||{am:{},pm:{}};
+const getWeek=k=>{const out=[];for(let i=0;i<7;i++){const d=new Date(k);d.setDate(d.getDate()+i);const key=d.toISOString().split('T')[0];if(state.entries[key])out.push({date:key,...state.entries[key]});}return out;};
+const getMonth=k=>{const out=[];const[y,m]=k.split('-').map(Number);const days=new Date(y,m,0).getDate();for(let d=1;d<=days;d++){const key=y+'-'+String(m).padStart(2,'0')+'-'+String(d).padStart(2,'0');if(state.entries[key])out.push({date:key,...state.entries[key]});}return out;};
+const sum=arr=>{let g=0,f=0,m=0,d=0;for(const e of arr){let dg=0,df=0,dm=0,has=false;for(const sh of CONFIG.SHIFTS){const s=e[sh.id];if(s&&s.gross){has=true;dg+=s.gross;df+=s.fuelCost||calcFuel(s.km||0);dm+=s.misc||0;}}if(has){d++;g+=dg;f+=df;m+=dm;}}return{gross:g,fuel:f,misc:m,profit:g-f-m-d*state.settings.DAILY_RENTAL-d*state.settings.DAILY_MAINT_RESERVE,days:d};};
+
+function log(msg){const el=$('debugBox');const t=new Date().toLocaleTimeString();el.textContent=t+': '+msg+'\n'+el.textContent;console.log(msg);}
+function load(){try{const r=localStorage.getItem(KEY);if(r){const p=JSON.parse(r);state.entries=p.entries||{};state.settings={...CONFIG,...(p.settings||{})};log('Loaded '+Object.keys(state.entries).length+' days');}}catch(e){log('Load err '+e);}applySettings();populateToday();refreshAll();}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));log('Saved');}catch(e){log('Save err '+e);}}
+function applySettings(){$('setPetrol').value=state.settings.PETROL_PRICE;$('setConsumption').value=state.settings.VITZ_L_PER_100KM;$('setRental').value=state.settings.DAILY_RENTAL;$('setMisc').value=state.settings.DAILY_MISC;$('setMaint').value=state.settings.DAILY_MAINT_RESERVE;}
+function populateToday(){const e=getEntry(todayKey());for(const sh of CONFIG.SHIFTS){const s=e[sh.id];if(s){$(sh.id+'Gross').value=s.gross||'';$(sh.id+'Km').value=s.km||'';$(sh.id+'Misc').value=s.misc||'';}}updateShift('am');updateShift('pm');}
+function exportData(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='vitz-backup-'+todayKey()+'.json';a.click();URL.revokeObjectURL(url);alert('Exported');}
+function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const p=JSON.parse(r.result);state.entries=p.entries||{};state.settings={...CONFIG,...(p.settings||{})};save();applySettings();populateToday();refreshAll();alert('Imported');}catch(e){alert('Import failed '+e);}};r.readAsText(f);}
+function saveSettings(){state.settings.PETROL_PRICE=parseFloat($('setPetrol').value)||CONFIG.PETROL_PRICE;state.settings.VITZ_L_PER_100KM=parseFloat($('setConsumption').value)||CONFIG.VITZ_L_PER_100KM;state.settings.DAILY_RENTAL=parseInt($('setRental').value)||CONFIG.DAILY_RENTAL;state.settings.DAILY_MISC=parseInt($('setMisc').value)||CONFIG.DAILY_MISC;state.settings.DAILY_MAINT_RESERVE=parseInt($('setMaint').value)||CONFIG.DAILY_MAINT_RESERVE;save();refreshAll();}
+function saveSettingsClick(){saveSettings();alert('Settings saved');}
+function showTab(t){document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));event.target.classList.add('active');$('panel-'+t).classList.add('active');}
+
+function saveShift(id){
+  const t=todayKey();if(!state.entries[t])state.entries[t]={am:{},pm:{}};
+  const g=parseInt($(id+'Gross').value)||0;
+  const k=parseFloat($(id+'Km').value)||0;
+  const m=parseInt($(id+'Misc').value)||0;
+  const fc=calcFuel(k);
+  log("saveShift "+id+" raw: gross='"+$(id+'Gross').value+"' km='"+$(id+'Km').value+"' misc='"+$(id+'Misc').value+"' -> g="+g+" k="+k+" m="+m+" fc="+fc);
+  state.entries[t][id]={gross:g,km:k,misc:m,fuelCost:fc};
+  save();updateShift(id);refreshWeek();refreshMonth();
+}
+function updateShift(id){
+  const s=getEntry(todayKey())[id];
+  const fuel=$(id+'Fuel'),dep=$(id+'Deposit'),val=$(id+'DepositVal');
+  if(s&&s.gross){fuel.value=fmt(s.fuelCost||calcFuel(s.km||0));val.textContent=fmt(s.gross-fuel.value.replace(/,/g,'')-(s.misc||0))+' Br';dep.style.display='flex';}
+  else{fuel.value='';dep.style.display='none';}
+  refreshToday();
+}
+function refreshToday(){
+  const e=getEntry(todayKey());let tg=0,tf=0,tm=0,sd=0;
+  for(const sh of CONFIG.SHIFTS){const s=e[sh.id];if(s&&s.gross){sd++;tg+=s.gross;tf+=s.fuelCost||calcFuel(s.km||0);tm+=s.misc||0;}}
+  const p=sd?calcProfit(tg,tf,tm):0,gpct=Math.min(100,(tg/CONFIG.TARGET_GROSS_DAILY)*100),ppct=sd?Math.min(100,Math.max(0,(p/CONFIG.TARGET_PROFIT_DAILY)*100)):0;
+  $('statGross').textContent=fmt(tg)+' Br';$('statFuel').textContent=fmt(tf)+' Br';$('statFuel').className='val '+(tf>2200?'red':'');$('statProfit').textContent=fmt(p)+' Br';$('statProfit').className='val '+(p<1000?'red':p<2000?'yellow':'green');$('progressGross').style.width=gpct+'%';$('progressText').textContent='Gross '+gpct.toFixed(0)+'% Profit '+ppct.toFixed(0)+'%';$('todayDate').textContent='Today: '+new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+}
+function refreshWeek(){const wk=weekKey(),ws=new Date(wk),we=new Date(ws);we.setDate(we.getDate()+6);const es=getWeek(wk),{gross,fuel,profit,days}=sum(es),gpct=Math.min(100,(gross/CONFIG.TARGET_GROSS_WEEKLY)*100),ppct=days?Math.min(100,Math.max(0,(profit/CONFIG.TARGET_PROFIT_WEEKLY)*100)):0;$('wGross').textContent=fmt(gross)+' Br';$('wFuel').textContent=fmt(fuel)+' Br';$('wFuel').className='val '+(fuel>13000?'red':'');$('wProfit').textContent=fmt(profit)+' Br';$('wProfit').className='val '+(profit<10000?'red':profit<14000?'yellow':'green');$('wProgress').style.width=gpct+'%';$('wProgressText').textContent=days+'/7 days';$('weekRange').textContent='Week '+ws.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' to '+we.toLocaleDateString(undefined,{day:'numeric'});let h='';if(es.length){for(const e of es){let dg=0,df=0,dm=0;for(const sh of CONFIG.SHIFTS){const s=e[sh.id];if(s&&s.gross){dg+=s.gross;df+=s.fuelCost||calcFuel(s.km||0);dm+=s.misc||0;}}const p=dg?calcProfit(dg,df,dm):0,ds=new Date(e.date).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});h+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #00d4aa11"><span>'+ds+'</span><span style="display:flex;gap:12px;text-align:right"><span><b>'+fmt(dg)+'</b> Gross</span><span><b>'+fmt(df)+'</b> Fuel</span><span><b style="color:'+(p<1000?'var(--red)':p<2000?'var(--yellow)':'var(--green)')+'">'+fmt(p)+'</b> Profit</span></span></div>';}}else h='<div style="color:var(--muted);padding:20px;text-align:center">No entries this week</div>';$('weekList').innerHTML=h;}
+function refreshMonth(){const mk=monthKey(),es=getMonth(mk),{gross,fuel,profit,days}=sum(es),gpct=Math.min(100,(gross/CONFIG.TARGET_GROSS_MONTHLY)*100),ppct=days?Math.min(100,Math.max(0,(profit/CONFIG.TARGET_PROFIT_MONTHLY)*100)):0;$('mGross').textContent=fmt(gross);$('mFuel').textContent=fmt(fuel);$('mFuel').className='val '+(fuel>55000?'red':'');$('mProfit').textContent=fmt(profit);$('mProfit').className='val '+(profit<50000?'red':profit<60000?'yellow':'green');$('mProgress').style.width=gpct+'%';$('mProgressText').textContent=days+' days';$('monthTitle').textContent=new Date(mk+'-01').toLocaleDateString(undefined,{month:'long',year:'numeric'});let h='';if(es.length){for(const e of es){let dg=0,df=0,dm=0;for(const sh of CONFIG.SHIFTS){const s=e[sh.id];if(s&&s.gross){dg+=s.gross;df+=s.fuelCost||calcFuel(s.km||0);dm+=s.misc||0;}}const p=dg?calcProfit(dg,df,dm):0,ds=new Date(e.date).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});h+='<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #00d4aa11"><span>'+ds+'</span><span style="display:flex;gap:12px;text-align:right"><span><b>'+fmt(dg)+'</b> Gross</span><span><b>'+fmt(df)+'</b> Fuel</span><span><b style="color:'+(p<1000?'var(--red)':p<2000?'var(--yellow)':'var(--green)')+'">'+fmt(p)+'</b> Profit</span></span></div>';}}else h='<div style="color:var(--muted);padding:20px;text-align:center">No entries this month</div>';$('monthList').innerHTML=h;}
+function refreshAll(){refreshToday();refreshWeek();refreshMonth();}
+load();
+</script>
+</body>
+</html>

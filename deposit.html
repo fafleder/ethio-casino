@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Vitz Deposit Tracker</title>
+<style>
+:root{--bg:#0f0f1a;--card:#1a1a2e;--accent:#00d4aa;--text:#eaeaea;--muted:#888;--green:#2ed573;--radius:16px;--shadow:0 8px 32px #00000080}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);padding:16px 20px;text-align:center;position:sticky;top:0;z-index:10;border-bottom:1px solid #00d4aa22}
+h1{font-size:1.3rem;font-weight:700;letter-spacing:0.5px}
+.subtitle{font-size:0.75rem;color:var(--muted);margin-top:2px}
+main{flex:1;padding:16px 12px 100px;display:grid;gap:12px;max-width:480px;margin:0 auto;width:100%}
+.card{background:var(--card);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);border:1px solid #00d4aa11}
+.card h2{font-size:0.85rem;font-weight:600;color:var(--accent);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.row{display:flex;gap:8px;margin-bottom:10px}
+.row.single > *{flex:1}
+.input-wrap{flex:1;display:flex;flex-direction:column;gap:4px}
+label{font-size:0.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+input,select{background:#0d0d1a;border:1px solid #00d4aa22;color:var(--text);padding:12px 14px;border-radius:10px;font-size:1rem;outline:none;transition:border 0.2s}
+input:focus,select:focus{border-color:var(--accent)}
+input[type="number"]{text-align:right}
+.btn{flex:1;background:linear-gradient(135deg,var(--accent) 0%,#00b894 100%);color:#0a0a0a;border:none;padding:14px;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;transition:transform 0.1s,box-shadow 0.2s}
+.btn:active{transform:scale(0.98)}
+.btn.secondary{background:linear-gradient(135deg,#2d2d44 0%,#1a1a2e 100%);color:var(--accent);border:1px solid var(--accent)}
+.big-num{font-size:2.2rem;font-weight:800;color:var(--accent);line-height:1.1}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:#0d0d1a;border-radius:10px;padding:12px;text-align:center;border:1px solid #00d4aa11}
+.stat .label{font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.stat .val{font-size:1.1rem;font-weight:700}
+.stat .val.green{color:var(--green)}
+.history-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #00d4aa11}
+.history-item:last-child{border-bottom:none}
+.history-date{font-size:0.75rem;color:var(--muted)}
+.history-vals{display:flex;gap:12px;text-align:right}
+.history-val{font-size:0.8rem}
+.history-val .num{font-weight:700}
+.history-val .num.green{color:var(--green)}
+.empty{text-align:center;color:var(--muted);padding:20px;font-size:0.85rem}
+.tabs{display:flex;gap:6px;margin-bottom:12px;background:#0d0d1a;border-radius:10px;padding:4px}
+.tab{flex:1;background:none;border:none;color:var(--muted);padding:8px;font-size:0.75rem;font-weight:600;border-radius:8px;cursor:pointer;transition:all 0.2s}
+.tab.active{background:var(--accent);color:#0a0a0a}
+@media (max-width:380px){.stat-grid{grid-template-columns:1fr}.big-num{font-size:1.8rem}}
+</style>
+</head>
+<body>
+<header>
+<h1>💰 Deposit Tracker</h1>
+<div class="subtitle">Morning • Evening • Combined</div>
+</header>
+<main id="app"></main>
+
+<script>
+// ===== CONFIG =====
+const PETROL_PRICE = 167.50;
+const VITZ_L_PER_100KM = 6.5;
+const SHIFTS = [
+  {id:'am', label:'Morning (Friend)', emoji:'🌅', hours:'8AM–4PM'},
+  {id:'pm', label:'Evening (You)', emoji:'🌙', hours:'4:30PM–9:30PM'}
+];
+
+// ===== STATE =====
+let state = loadState();
+let activeTab = 'today';
+
+function loadState(){
+  try{
+    return JSON.parse(localStorage.getItem('vitzDeposits')||'{}');
+  }catch{return {}}
+}
+function saveState(){
+  localStorage.setItem('vitzDeposits', JSON.stringify(state));
+}
+
+function calcFuelCost(km){
+  return (km * VITZ_L_PER_100KM / 100) * PETROL_PRICE;
+}
+function calcDeposit(gross, km, misc){
+  return gross - calcFuelCost(km) - misc;
+}
+function getDateKey(d=new Date()){
+  return d.toISOString().split('T')[0];
+}
+function getWeekKey(d=new Date()){
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day===0?-6:1);
+  const monday = new Date(date.setDate(diff));
+  return monday.toISOString().split('T')[0];
+}
+function getMonthKey(d=new Date()){
+  return d.toISOString().slice(0,7);
+}
+function getEntry(dateKey){
+  return state[dateKey] || {am:{}, pm:{}};
+}
+function getWeekEntries(weekKey){
+  const entries = [];
+  for(let i=0;i<7;i++){
+    const d = new Date(weekKey);
+    d.setDate(d.getDate()+i);
+    const key = d.toISOString().split('T')[0];
+    if(state[key]) entries.push({date:key, ...state[key]});
+  }
+  return entries;
+}
+function getMonthEntries(monthKey){
+  const entries = [];
+  const [y,m] = monthKey.split('-').map(Number);
+  const daysInMonth = new Date(y,m,0).getDate();
+  for(let d=1;d<=daysInMonth;d++){
+    const key = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    if(state[key]) entries.push({date:key, ...state[key]});
+  }
+  return entries;
+}
+function sumDeposits(entries){
+  let amTotal=0, pmTotal=0, days=0;
+  for(const e of entries){
+    let hasData=false;
+    for(const shift of SHIFTS){
+      const s = e[shift.id];
+      if(s && s.gross){
+        hasData=true;
+        const dep = calcDeposit(s.gross, s.km||0, s.misc||0);
+        if(shift.id==='am') amTotal += dep;
+        else pmTotal += dep;
+      }
+    }
+    if(hasData) days++;
+  }
+  return {amTotal, pmTotal, combined: amTotal+pmTotal, days};
+}
+
+// ===== RENDER =====
+function render(){
+  document.getElementById('app').innerHTML = activeTab==='today'?renderToday():activeTab==='week'?renderWeek():renderMonth();
+  attachListeners();
+}
+function renderToday(){
+  const today = getDateKey();
+  const entry = getEntry(today);
+  const todayStr = new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+  
+  let html = `<div class="card"><h2>📅 ${todayStr}</h2>`;
+  
+  for(const shift of SHIFTS){
+    const s = entry[shift.id];
+    const deposit = s?.gross ? calcDeposit(s.gross, s.km||0, s.misc||0) : 0;
+    const fuel = s?.gross ? calcFuelCost(s.km||0) : 0;
+    
+    html += `
+      <div class="card" style="margin-top:12px">
+        <h2>${shift.emoji} ${shift.label} <span style="font-size:0.7rem;color:var(--muted);font-weight:400">${shift.hours}</span></h2>
+        <div class="row single">
+          <div class="input-wrap">
+            <label>Gross (Br)</label>
+            <input type="number" step="10" min="0" placeholder="e.g. 4300" value="${s?.gross||''}" data-shift="${shift.id}" data-field="gross" inputmode="numeric">
+          </div>
+          <div class="input-wrap">
+            <label>KM driven</label>
+            <input type="number" step="1" min="0" placeholder="e.g. 110" value="${s?.km||''}" data-shift="${shift.id}" data-field="km" inputmode="numeric">
+          </div>
+        </div>
+        <div class="row single">
+          <div class="input-wrap">
+            <label>Misc (Br)</label>
+            <input type="number" step="10" min="0" placeholder="100" value="${s?.misc||''}" data-shift="${shift.id}" data-field="misc" inputmode="numeric">
+          </div>
+          <div class="input-wrap">
+            <label>Fuel (auto)</label>
+            <input type="text" value="${s?.gross?fmt(fuel):''}" readonly style="background:#0d0d1a;color:var(--accent)">
+          </div>
+        </div>
+        ${s?.gross?`<div style="margin-top:10px;padding:12px;background:#0d0d1a;border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+          <span style="color:var(--muted);font-size:0.85rem">💰 Deposit to business</span>
+          <span class="big-num" style="font-size:1.5rem">${fmt(deposit)} Br</span>
+        </div>`:''}
+      </div>
+    `;
+  }
+  
+  // Combined
+  let totalDep = 0, hasAny = false;
+  for(const shift of SHIFTS){
+    const s = entry[shift.id];
+    if(s?.gross){
+      hasAny = true;
+      totalDep += calcDeposit(s.gross, s.km||0, s.misc||0);
+    }
+  }
+  if(hasAny){
+    html += `
+      <div class="card" style="margin-top:12px;border:2px solid var(--accent)">
+        <h2>🤝 Combined Deposit</h2>
+        <div class="big-num" style="text-align:center">${fmt(totalDep)} Br</div>
+        <div style="text-align:center;color:var(--muted);font-size:0.8rem;margin-top:4px">This goes to the business (rental + reserve + profit)</div>
+      </div>
+    `;
+  }
+  html += `</div>`;
+  
+  // Actions
+  html += `
+    <div class="card">
+      <div class="row">
+        <button class="btn secondary" id="copyToday">📋 Copy Today</button>
+        <button class="btn secondary" id="clearToday">🗑 Clear</button>
+      </div>
+    </div>
+  `;
+  return html;
+}
+function renderWeek(){
+  const weekKey = getWeekKey();
+  const weekStart = new Date(weekKey);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+6);
+  const entries = getWeekEntries(weekKey);
+  const {amTotal, pmTotal, combined, days} = sumDeposits(entries);
+  
+  let html = `
+    <div class="card">
+      <h2>📊 Week ${weekStart.toLocaleDateString(undefined,{month:'short',day:'numeric'})} – ${weekEnd.toLocaleDateString(undefined,{day:'numeric'})}</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="label">Morning (Friend)</div><div class="val green">${fmt(amTotal)} Br</div></div>
+        <div class="stat"><div class="label">Evening (You)</div><div class="val green">${fmt(pmTotal)} Br</div></div>
+        <div class="stat"><div class="label">Combined</div><div class="val">${fmt(combined)} Br</div></div>
+        <div class="stat"><div class="label">Days logged</div><div class="val">${days}/7</div></div>
+      </div>
+    </div>
+    <div class="card"><h2>📅 Daily Breakdown</h2>
+      ${entries.length?entries.map(e=>renderHistoryItem(e)).join(''):'<div class="empty">No entries this week</div>'}
+    </div>
+  `;
+  return html;
+}
+function renderMonth(){
+  const monthKey = getMonthKey();
+  const entries = getMonthEntries(monthKey);
+  const {amTotal, pmTotal, combined, days} = sumDeposits(entries);
+  
+  let html = `
+    <div class="card">
+      <h2>📆 ${new Date(monthKey+'-01').toLocaleDateString(undefined,{month:'long',year:'numeric'})}</h2>
+      <div class="stat-grid">
+        <div class="stat"><div class="label">Morning (Friend)</div><div class="val green">${fmt(amTotal)} Br</div></div>
+        <div class="stat"><div class="label">Evening (You)</div><div class="val green">${fmt(pmTotal)} Br</div></div>
+        <div class="stat"><div class="label">Combined</div><div class="val">${fmt(combined)} Br</div></div>
+        <div class="stat"><div class="label">Days logged</div><div class="val">${days}</div></div>
+      </div>
+    </div>
+    <div class="card"><h2>📅 Daily Breakdown</h2>
+      ${entries.length?entries.map(e=>renderHistoryItem(e)).join(''):'<div class="empty">No entries this month</div>'}
+    </div>
+    <div class="card">
+      <h2>⚙️ Settings & Backup</h2>
+      <div class="row single">
+        <div class="input-wrap"><label>Petrol (Br/L)</label><input type="number" step="0.01" value="${PETROL_PRICE}" id="setPetrol"></div>
+        <div class="input-wrap"><label>L/100km</label><input type="number" step="0.1" value="${VITZ_L_PER_100KM}" id="setConsumption"></div>
+      </div>
+      <button class="btn secondary" style="margin-top:12px;width:100%" id="exportData">📤 Export JSON</button>
+      <button class="btn secondary" style="margin-top:8px;width:100%" id="importData">📥 Import JSON</button>
+      <input type="file" id="importFile" accept=".json" style="display:none">
+    </div>
+  `;
+  return html;
+}
+function renderHistoryItem(e){
+  let amDep=0, pmDep=0;
+  for(const shift of SHIFTS){
+    const s = e[shift.id];
+    if(s?.gross){
+      const dep = calcDeposit(s.gross, s.km||0, s.misc||0);
+      if(shift.id==='am') amDep += dep;
+      else pmDep += dep;
+    }
+  }
+  const dateStr = new Date(e.date).toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+  return `
+    <div class="history-item">
+      <span class="history-date">${dateStr}</span>
+      <div class="history-vals">
+        <div class="history-val"><div class="num green">${fmt(amDep)}</div><div class="label">🌅</div></div>
+        <div class="history-val"><div class="num green">${fmt(pmDep)}</div><div class="label">🌙</div></div>
+        <div class="history-val"><div class="num">${fmt(amDep+pmDep)}</div><div class="label">Total</div></div>
+      </div>
+    </div>
+  `;
+}
+function fmt(n){return Math.round(n).toLocaleString()}
+
+// ===== EVENTS =====
+function attachListeners(){
+  document.querySelectorAll('.tab').forEach(btn=>{
+    btn.onclick=()=>{activeTab=btn.dataset.tab;render()};
+  });
+  document.querySelectorAll('input[data-shift]').forEach(input=>{
+    input.oninput=()=>saveShift(input.dataset.shift, input.dataset.field, input.value);
+  });
+  const copyBtn = document.getElementById('copyToday');
+  if(copyBtn) copyBtn.onclick=copyToday;
+  const clearBtn = document.getElementById('clearToday');
+  if(clearBtn) clearBtn.onclick=clearToday;
+  const exportBtn = document.getElementById('exportData');
+  if(exportBtn) exportBtn.onclick=exportData;
+  const importBtn = document.getElementById('importData');
+  if(importBtn) importBtn.onclick=()=>document.getElementById('importFile').click();
+  const importFile = document.getElementById('importFile');
+  if(importFile) importFile.onchange=importData;
+}
+function saveShift(shiftId, field, value){
+  const today = getDateKey();
+  if(!state[today]) state[today] = {am:{}, pm:{}};
+  const num = field==='gross'||field==='misc' ? parseInt(value)||0 : parseFloat(value)||0;
+  state[today][shiftId] = {...state[today][shiftId], [field]: num};
+  saveState();
+  render();
+}
+function copyToday(){
+  const today = getDateKey();
+  const entry = getEntry(today);
+  let lines = [`💰 Deposit Summary — ${new Date().toLocaleDateString()}`, ''];
+  let total = 0;
+  for(const shift of SHIFTS){
+    const s = entry[shift.id];
+    if(s?.gross){
+      const fuel = calcFuelCost(s.km||0);
+      const misc = s.misc||0;
+      const dep = s.gross - fuel - misc;
+      lines.push(`${shift.emoji} ${shift.label}`);
+      lines.push(`  Gross: ${fmt(s.gross)} • KM: ${s.km||0} • Fuel: ${fmt(fuel)} • Misc: ${fmt(misc)}`);
+      lines.push(`  💰 Deposit: ${fmt(dep)} Br`);
+      lines.push('');
+      total += dep;
+    }
+  }
+  if(total) lines.push(`🤝 Combined: ${fmt(total)} Br`);
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>alert('Copied!'));
+}
+function clearToday(){
+  if(confirm('Clear today?')){
+    delete state[getDateKey()];
+    saveState();
+    render();
+  }
+}
+function exportData(){
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`vitz-deposits-${getDateKey()}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+function importData(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{try{state=JSON.parse(reader.result);saveState();render();alert('Imported!')}catch{alert('Bad file')}};
+  reader.readAsText(file); e.target.value='';
+}
+
+// ===== INIT =====
+// Simple tabs at bottom for mobile
+document.addEventListener('DOMContentLoaded',()=>{
+  const tabs = document.createElement('div');
+  tabs.className='tabs';
+  tabs.innerHTML = `
+    <button class="tab active" data-tab="today" role="tab">Today</button>
+    <button class="tab" data-tab="week" role="tab">Week</button>
+    <button class="tab" data-tab="month" role="tab">Month</button>
+  `;
+  document.getElementById('app').prepend(tabs);
+  render();
+});
+</script>
+</body>
+</html>
