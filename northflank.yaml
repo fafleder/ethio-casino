@@ -1,0 +1,58 @@
+# Northflank Deployment Configuration for Ethio Casino
+# This file configures the service for Northflank's Developer plan (free tier)
+# 2 services, 1 vCPU, 1.5GB RAM, 5GB persistent volume
+
+services:
+  # Main API service with bot webhook
+  - name: ethio-casino-api
+    type: web
+    build:
+      dockerfilePath: ./Dockerfile
+      buildContext: .
+    port: 3000
+    healthCheckPath: /health
+    # Resource limits (within Northflank free tier)
+    resources:
+      cpu: 0.5
+      memory: 1024  # MB
+    # Persistent volume for SQLite database
+    volumes:
+      - name: casino-data
+        path: /app/data
+        size: 1  # GB
+    # Environment variables (set these in Northflank dashboard)
+    env:
+      - name: NODE_ENV
+        value: "production"
+      - name: PORT
+        value: "3000"
+      # Required secrets - set in Northflank dashboard:
+      # BOT_TOKEN, BOT_USERNAME, WEBAPP_URL, NVIDIA_API_KEY, NVIDIA_BASE_URL, OWNER_TELEGRAM_IDS
+    # Auto-deploy on push to main
+    autoDeploy: true
+    # Build settings
+    buildOptions:
+      noCache: false
+
+  # Optional: Separate worker for background tasks (cron, notifications)
+  - name: ethio-casino-worker
+    type: worker
+    build:
+      dockerfilePath: ./Dockerfile.worker
+      buildContext: .
+    resources:
+      cpu: 0.25
+      memory: 512
+    env:
+      - name: NODE_ENV
+        value: "production"
+    autoDeploy: true
+
+# Volumes
+volumes:
+  - name: casino-data
+    size: 1  # GB
+
+# Optional: PostgreSQL addon (Northflank provides managed Postgres)
+# Enable in dashboard: Addons → PostgreSQL → Free tier
+# Then add DATABASE_URL to environment variables
